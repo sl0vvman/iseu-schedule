@@ -2,6 +2,7 @@ package by.iseu.schedule.ui.schedule
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,13 +17,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,10 +41,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,16 +54,18 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -89,17 +103,40 @@ fun ScheduleScreen(
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    BackHandler(enabled = state.isTeacherPreview) {
-        viewModel.closeTeacherPreview()
+    BackHandler(
+        enabled = state.tab == ScheduleTab.TEACHERS && state.teacherSelection != null,
+    ) {
+        viewModel.closeTeacher()
+    }
+    BackHandler(
+        enabled = state.tab == ScheduleTab.TEACHERS && state.teacherSelection == null,
+    ) {
+        viewModel.selectTab(ScheduleTab.SCHEDULE)
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    if (state.tab == ScheduleTab.TEACHERS && state.teacherSelection != null) {
+                        IconButton(onClick = viewModel::closeTeacher) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "К списку преподавателей",
+                            )
+                        }
+                    }
+                },
                 title = {
                     Column {
                         Text("ISEU", fontWeight = FontWeight.SemiBold)
-                        state.activeSelection?.targetLabel?.let { label ->
+                        val subtitle = when {
+                            state.tab == ScheduleTab.TEACHERS &&
+                                state.teacherSelection == null -> "Все преподаватели"
+
+                            else -> state.activeSelection?.targetLabel
+                        }
+                        subtitle?.let { label ->
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.bodySmall,
@@ -111,8 +148,10 @@ fun ScheduleScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = onChangeTarget) {
-                        Text("Сменить")
+                    if (state.tab == ScheduleTab.SCHEDULE) {
+                        TextButton(onClick = onChangeTarget) {
+                            Text("Сменить")
+                        }
                     }
                     IconButton(onClick = onSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Настройки")
@@ -120,32 +159,166 @@ fun ScheduleScreen(
                 },
             )
         },
+        bottomBar = {
+            Column {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp,
+                ) {
+                    val itemColors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.onSurface,
+                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    NavigationBarItem(
+                        selected = state.tab == ScheduleTab.SCHEDULE,
+                        onClick = { viewModel.selectTab(ScheduleTab.SCHEDULE) },
+                        icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+                        label = { Text("Расписание") },
+                        colors = itemColors,
+                    )
+                    NavigationBarItem(
+                        selected = state.tab == ScheduleTab.TEACHERS,
+                        onClick = { viewModel.selectTab(ScheduleTab.TEACHERS) },
+                        icon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        label = { Text("Преподаватели") },
+                        colors = itemColors,
+                    )
+                }
+            }
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            WeekHeader(
-                weekMonday = state.weekMonday,
-                weeks = state.weeks,
-                onPrev = viewModel::previousWeek,
-                onNext = viewModel::nextWeek,
-                onCurrent = viewModel::currentWeek,
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            if (state.isTeacherPreview) {
-                TeacherPreviewBanner(
-                    label = state.activeSelection?.targetLabel.orEmpty(),
-                    onBack = viewModel::closeTeacherPreview,
+            if (state.tab == ScheduleTab.TEACHERS && state.teacherSelection == null) {
+                TeacherListPane(state = state, viewModel = viewModel)
+            } else {
+                WeekHeader(
+                    weekMonday = state.weekMonday,
+                    weeks = state.weeks,
+                    onPrev = viewModel::previousWeek,
+                    onNext = viewModel::nextWeek,
+                    onCurrent = viewModel::currentWeek,
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                WeekContent(state = state, viewModel = viewModel)
             }
-            state.notice?.let { notice ->
-                NoticeBanner(message = notice, onDismiss = viewModel::clearNotice)
-            }
-            WeekContent(state = state, viewModel = viewModel)
         }
     }
+}
+
+@Composable
+private fun TeacherListPane(
+    state: ScheduleUiState,
+    viewModel: ScheduleViewModel,
+) {
+    val teachers = remember(state.teachers, state.teacherQuery) {
+        val query = state.teacherQuery.trim()
+        if (query.isEmpty()) {
+            state.teachers
+        } else {
+            state.teachers.filter { it.label.contains(query, ignoreCase = true) }
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = state.teacherQuery,
+            onValueChange = viewModel::setTeacherQuery,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            placeholder = { Text("Поиск по ФИО или должности") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            trailingIcon = if (state.teacherQuery.isNotEmpty()) {
+                {
+                    IconButton(onClick = { viewModel.setTeacherQuery("") }) {
+                        Icon(Icons.Default.Close, contentDescription = "Очистить поиск")
+                    }
+                }
+            } else {
+                null
+            },
+            singleLine = true,
+        )
+
+        when {
+            state.teachersLoading && state.teachers.isEmpty() -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+
+            state.teachersError != null && state.teachers.isEmpty() -> ErrorState(
+                message = state.teachersError,
+                onRetry = viewModel::reloadTeachers,
+            )
+
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 8.dp),
+            ) {
+                if (state.teachersError != null) {
+                    item(key = "teachers-error") {
+                        Box(modifier = Modifier.padding(16.dp)) {
+                            ErrorBanner(
+                                message = state.teachersError,
+                                onRetry = viewModel::reloadTeachers,
+                            )
+                        }
+                    }
+                }
+                if (teachers.isEmpty() && !state.teachersLoading) {
+                    item(key = "teachers-empty") {
+                        EmptyDay(
+                            text = if (state.teacherQuery.isBlank()) {
+                                "Список преподавателей пуст"
+                            } else {
+                                "Ничего не найдено"
+                            },
+                        )
+                    }
+                }
+                items(teachers, key = { it.value }) { teacher ->
+                    TeacherRow(teacher = teacher, onClick = { viewModel.selectTeacher(teacher) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TeacherRow(teacher: Option, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = teacher.label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
 }
 
 @Composable
@@ -172,7 +345,7 @@ private fun WeekHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onPrev, enabled = canPrev) {
-            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Предыдущая неделя")
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Предыдущая неделя")
         }
         Column(
             modifier = Modifier.weight(1f),
@@ -188,7 +361,7 @@ private fun WeekHeader(
             }
         }
         IconButton(onClick = onNext, enabled = canNext) {
-            Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Следующая неделя")
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Следующая неделя")
         }
     }
 }
@@ -201,19 +374,16 @@ private fun WeekContent(
 ) {
     val today = LocalDate.now()
     val content = state.content()
-    val dayLessons = remember(state.lessons, state.selectedDay) {
-        state.lessons.filter { it.date == state.selectedDay }
+    val days = remember(state.weekMonday) {
+        (0..6).map { state.weekMonday.plusDays(it.toLong()) }
     }
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(state.selectedDay, state.weekMonday) {
-        listState.scrollToItem(0)
-    }
+    val selectedIndex = days.indexOf(state.selectedDay).takeIf { it >= 0 } ?: 0
+    val lessonsByDate = remember(state.lessons) { state.lessons.groupBy { it.date } }
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (content == ScheduleContent.LESSONS) {
             DayTabs(
-                weekMonday = state.weekMonday,
+                days = days,
                 selectedDay = state.selectedDay,
                 today = today,
                 onSelect = viewModel::selectDay,
@@ -241,90 +411,174 @@ private fun WeekContent(
 
                 ScheduleContent.EMPTY -> EmptyWeek(state.siteMessage)
 
-                ScheduleContent.LESSONS -> LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    if (state.error != null) {
-                        item(key = "error") {
-                            ErrorBanner(state.error.orEmpty(), viewModel::retry)
-                        }
-                    }
-                    if (state.isFromCache) {
-                        item(key = "cache") {
-                            CacheBanner(state.fetchedAt, viewModel::refresh)
-                        }
-                    }
-                    if (dayLessons.isEmpty()) {
-                        item(key = "empty-day") {
-                            EmptyDay()
-                        }
-                    } else {
-                        itemsIndexed(dayLessons, key = { index, _ -> index }) { index, lesson ->
-                            LessonCard(
-                                lesson = lesson,
-                                mode = state.activeSelection?.mode ?: Mode.GROUP,
-                                onStaffClick = viewModel::openTeacher,
-                            )
-                            if (index != dayLessons.lastIndex) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 10.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                )
-                            }
-                        }
-                    }
-                }
+                ScheduleContent.LESSONS -> DayPager(
+                    state = state,
+                    days = days,
+                    selectedIndex = selectedIndex,
+                    lessonsByDate = lessonsByDate,
+                    viewModel = viewModel,
+                )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DayTabs(
-    weekMonday: LocalDate,
-    selectedDay: LocalDate,
-    today: LocalDate,
-    onSelect: (LocalDate) -> Unit,
+private fun DayPager(
+    state: ScheduleUiState,
+    days: List<LocalDate>,
+    selectedIndex: Int,
+    lessonsByDate: Map<LocalDate, List<Lesson>>,
+    viewModel: ScheduleViewModel,
 ) {
-    val days = remember(weekMonday) {
-        (0..6).map { weekMonday.plusDays(it.toLong()) }
-    }
-    val selectedIndex = days.indexOf(selectedDay).takeIf { it >= 0 } ?: 0
+    key(state.weekMonday) {
+        val pagerState = rememberPagerState(initialPage = selectedIndex) { days.size }
 
-    PrimaryTabRow(
-        selectedTabIndex = selectedIndex,
-        modifier = Modifier.fillMaxWidth(),
-        containerColor = Color.Transparent,
-        divider = {},
-    ) {
-        days.forEach { date ->
-            Tab(
-                selected = date == selectedDay,
-                onClick = { onSelect(date) },
-                text = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = shortDayNames[date.dayOfWeek.value - 1],
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (date == today) FontWeight.Bold else FontWeight.Medium,
-                        )
-                        Text(
-                            text = date.format(dayMonth),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
-                },
+        LaunchedEffect(selectedIndex) {
+            if (pagerState.currentPage != selectedIndex) {
+                pagerState.animateScrollToPage(selectedIndex)
+            }
+        }
+        LaunchedEffect(pagerState) {
+            snapshotFlow { pagerState.settledPage }.collect { page ->
+                days.getOrNull(page)?.let(viewModel::selectDay)
+            }
+        }
+
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+        ) { page ->
+            DayPage(
+                lessons = lessonsByDate[days[page]].orEmpty(),
+                mode = state.activeSelection?.mode ?: Mode.GROUP,
+                error = state.error,
+                isFromCache = state.isFromCache,
+                fetchedAt = state.fetchedAt,
+                onRetry = viewModel::retry,
+                onRefresh = viewModel::refresh,
             )
         }
     }
 }
 
 @Composable
-private fun EmptyDay() {
+private fun DayPage(
+    lessons: List<Lesson>,
+    mode: Mode,
+    error: String?,
+    isFromCache: Boolean,
+    fetchedAt: Instant?,
+    onRetry: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (error != null) {
+            item(key = "error") {
+                ErrorBanner(error, onRetry)
+            }
+        }
+        if (isFromCache) {
+            item(key = "cache") {
+                CacheBanner(fetchedAt, onRefresh)
+            }
+        }
+        if (lessons.isEmpty()) {
+            item(key = "empty-day") {
+                EmptyDay()
+            }
+        } else {
+            itemsIndexed(lessons, key = { index, _ -> index }) { index, lesson ->
+                LessonCard(lesson = lesson, mode = mode)
+                if (index != lessons.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayTabs(
+    days: List<LocalDate>,
+    selectedDay: LocalDate,
+    today: LocalDate,
+    onSelect: (LocalDate) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectableGroup(),
+    ) {
+        days.forEach { date ->
+            val selected = date == selectedDay
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .selectable(
+                        selected = selected,
+                        role = Role.Tab,
+                        onClick = { onSelect(date) },
+                    )
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = shortDayNames[date.dayOfWeek.value - 1],
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selected || date == today) {
+                        FontWeight.Bold
+                    } else {
+                        FontWeight.Medium
+                    },
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = date.format(dayMonth),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                Spacer(Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(18.dp)
+                        .height(2.dp)
+                        .background(
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                Color.Transparent
+                            },
+                            shape = RoundedCornerShape(1.dp),
+                        ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyDay(text: String = "Нет занятий") {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -332,7 +586,7 @@ private fun EmptyDay() {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "Нет занятий",
+            text = text,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
         )
@@ -343,7 +597,6 @@ private fun EmptyDay() {
 private fun LessonCard(
     lesson: Lesson,
     mode: Mode,
-    onStaffClick: (String) -> Unit,
 ) {
     val outline = MaterialTheme.colorScheme.outline
 
@@ -398,29 +651,12 @@ private fun LessonCard(
             TypeBadge(lesson.type)
 
             if (mode == Mode.GROUP) {
-                lesson.staff?.let { staff ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                onClickLabel = "Открыть расписание преподавателя",
-                            ) { onStaffClick(staff) },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = staff,
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            textDecoration = TextDecoration.Underline,
-                        )
-                        Icon(
-                            Icons.Default.KeyboardArrowRight,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                lesson.staff?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
             } else {
                 lesson.contingent?.let {
@@ -486,64 +722,6 @@ private fun SubgroupBadge(subgroup: Int) {
                 MaterialTheme.colorScheme.onSurface
             },
         )
-    }
-}
-
-@Composable
-private fun TeacherPreviewBanner(label: String, onBack: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 12.dp, top = 6.dp, bottom = 6.dp, end = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Расписание преподавателя",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            TextButton(onClick = onBack) {
-                Text("К группе")
-            }
-        }
-    }
-}
-
-@Composable
-private fun NoticeBanner(message: String, onDismiss: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = message,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            TextButton(onClick = onDismiss) {
-                Text("Понятно")
-            }
-        }
     }
 }
 

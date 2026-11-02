@@ -7,7 +7,6 @@ import by.iseu.schedule.data.model.Lesson
 import by.iseu.schedule.data.model.Mode
 import by.iseu.schedule.data.model.Option
 import by.iseu.schedule.data.model.ScheduleSelection
-import by.iseu.schedule.data.parser.TeacherMatcher
 import by.iseu.schedule.data.parser.WeekSelector
 import by.iseu.schedule.data.repo.ScheduleRepository
 import kotlinx.coroutines.CancellationException
@@ -23,10 +22,16 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 
+enum class ScheduleTab { SCHEDULE, TEACHERS }
+
 data class ScheduleUiState(
+    val tab: ScheduleTab = ScheduleTab.SCHEDULE,
     val selection: ScheduleSelection? = null,
-    val activeSelection: ScheduleSelection? = null,
-    val isTeacherPreview: Boolean = false,
+    val teacherSelection: ScheduleSelection? = null,
+    val teachers: List<Option> = emptyList(),
+    val teacherQuery: String = "",
+    val teachersLoading: Boolean = false,
+    val teachersError: String? = null,
     val weekMonday: LocalDate = LocalDate.now(),
     val selectedDay: LocalDate = LocalDate.now(),
     val weeks: List<Option> = emptyList(),
@@ -35,10 +40,16 @@ data class ScheduleUiState(
     val loading: Boolean = false,
     val refreshing: Boolean = false,
     val error: String? = null,
-    val notice: String? = null,
     val isFromCache: Boolean = false,
     val fetchedAt: Instant? = null,
-)
+) {
+    /** The target whose week is currently displayed. */
+    val activeSelection: ScheduleSelection?
+        get() = when (tab) {
+            ScheduleTab.SCHEDULE -> selection
+            ScheduleTab.TEACHERS -> teacherSelection
+        }
+}
 
 internal enum class ScheduleContent { LOADING, ERROR, EMPTY, LESSONS }
 
@@ -63,6 +74,7 @@ class ScheduleViewModel(
     val state: StateFlow<ScheduleUiState> = _state.asStateFlow()
 
     private var loadJob: Job? = null
+    private var teachersJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -74,48 +86,146 @@ class ScheduleViewModel(
                     return@collectLatest
                 }
 
+                if (_state.value.tab == ScheduleTab.TEACHERS) {
+                    _state.update { it.copy(selection = selection) }
+                    return@collectLatest
+                }
+
+                val monday = WeekSelector.mondayOf(today())
                 _state.update {
-                    val targetMonday = if (changed || previous == null) {
-                        WeekSelector.mondayOf(today())
-                    } else {
-                        it.weekMonday
-                    }
                     it.copy(
                         selection = selection,
-                        activeSelection = selection,
-                        isTeacherPreview = false,
-                        weekMonday = targetMonday,
-                        selectedDay = if (changed || previous == null) {
-                            defaultDay(targetMonday)
-                        } else {
-                            it.selectedDay
-                        },
-                        weeks = if (changed) emptyList() else it.weeks,
-                        lessons = if (changed) emptyList() else it.lessons,
-                        siteMessage = if (changed) null else it.siteMessage,
+                        weekMonday = monday,
+                        selectedDay = defaultDay(monday),
+                        weeks = emptyList(),
+                        lessons = emptyList(),
+                        siteMessage = null,
                         error = null,
-                        notice = null,
+                        isFromCache = false,
+                        fetchedAt = null,
                     )
                 }
-
-                if (changed || previous == null) {
-                    val cachedWeeks = repository.cachedWeeks(selection)
-                    if (cachedWeeks.isNotEmpty()) {
-                        _state.update { it.copy(weeks = cachedWeeks) }
-                    }
-                }
-
-                loadWeek(_state.value.weekMonday, force = false)
+                loadWeek(monday, force = false)
             }
         }
     }
 
+    fun selectTab(tab: ScheduleTab) {
+        if (_state.value.tab == tab) return
+        loadJob?.cancel()
+        _state.update {
+            it.copy(
+                tab = tab,
+                weeks = emptyList(),
+                lessons = emptyList(),
+                siteMessage = null,
+                error = null,
+                isFromCache = false,
+                fetchedAt = null,
+                loading = false,
+                refreshing = false,
+            )
+        }
+        when (tab) {
+            ScheduleTab.TEACHERS -> {
+                loadTeachers()
+                if (_state.value.teacherSelection != null) {
+                    loadWeek(_state.value.weekMonday, force = false)
+                }
+            }
+
+            ScheduleTab.SCHEDULE -> {
+                if (_state.value.selection != null) {
+                    loadWeek(_state.value.weekMonday, force = false)
+                }
+            }
+        }
+    }
+
+    fun loadTeachers(force: Boolean = false) {
+        if (!force && _state.value.teachers.isNotEmpty()) return
+        teachersJob?.cancel()
+        teachersJob = viewModelScope.launch {
+            _state.update { it.copy(teachersLoading = true, teachersError = null) }
+            try {
+                val teachers = repository.loadTeachers(force)
+                _state.update { it.copy(teachers = teachers, teachersLoading = false) }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                val message = when (error) {
+                    is IseuException ->
+                        error.message.orEmpty().ifEmpty { "Не удалось загрузить список преподавателей" }
+
+                    else -> "Не удалось загрузить список преподавателей"
+                }
+                _state.update { it.copy(teachersLoading = false, teachersError = message) }
+            }
+        }
+    }
+
+    fun reloadTeachers() {
+        loadTeachers(force = true)
+    }
+
+    fun setTeacherQuery(query: String) {
+        _state.update { it.copy(teacherQuery = query) }
+    }
+
+    fun selectTeacher(option: Option) {
+        val monday = WeekSelector.mondayOf(today())
+        loadJob?.cancel()
+        _state.update {
+            it.copy(
+                tab = ScheduleTab.TEACHERS,
+                teacherSelection = ScheduleSelection(
+                    mode = Mode.TEACHER,
+                    teacher = option,
+                ),
+                weekMonday = monday,
+                selectedDay = defaultDay(monday),
+                weeks = emptyList(),
+                lessons = emptyList(),
+                siteMessage = null,
+                error = null,
+                isFromCache = false,
+                fetchedAt = null,
+                loading = true,
+                refreshing = false,
+            )
+        }
+        loadWeek(monday, force = false)
+    }
+
+    fun closeTeacher() {
+        if (_state.value.teacherSelection == null) return
+        loadJob?.cancel()
+        _state.update {
+            it.copy(
+                teacherSelection = null,
+                weeks = emptyList(),
+                lessons = emptyList(),
+                siteMessage = null,
+                error = null,
+                isFromCache = false,
+                fetchedAt = null,
+                loading = false,
+                refreshing = false,
+            )
+        }
+    }
+
     fun refresh() {
-        loadWeek(_state.value.weekMonday, force = true)
+        val current = _state.value
+        if (current.tab == ScheduleTab.TEACHERS && current.teacherSelection == null) {
+            loadTeachers(force = true)
+        } else {
+            loadWeek(current.weekMonday, force = true)
+        }
     }
 
     fun retry() {
-        loadWeek(_state.value.weekMonday, force = true)
+        refresh()
     }
 
     fun previousWeek() {
@@ -132,79 +242,6 @@ class ScheduleViewModel(
 
     fun selectDay(date: LocalDate) {
         _state.update { it.copy(selectedDay = date) }
-    }
-
-    fun clearNotice() {
-        _state.update { it.copy(notice = null) }
-    }
-
-    /**
-     * Opens a teacher schedule from a group lesson without touching the saved
-     * selection: the student can look up when to approach a teacher and then
-     * return to their own group.
-     */
-    fun openTeacher(staff: String) {
-        val current = _state.value
-        val active = current.activeSelection ?: return
-        if (active.mode != Mode.GROUP || current.isTeacherPreview) return
-
-        viewModelScope.launch {
-            _state.update { it.copy(notice = null) }
-            val teachers = try {
-                repository.loadTeachers()
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                _state.update { it.copy(notice = "Не удалось загрузить список преподавателей") }
-                return@launch
-            }
-
-            if (_state.value.activeSelection?.cacheKey != active.cacheKey ||
-                _state.value.isTeacherPreview
-            ) {
-                return@launch
-            }
-
-            val teacher = TeacherMatcher.match(staff, teachers)
-            if (teacher == null) {
-                _state.update { it.copy(notice = "Преподаватель не найден в списке") }
-                return@launch
-            }
-
-            val preview = ScheduleSelection(mode = Mode.TEACHER, teacher = teacher)
-            _state.update {
-                it.copy(
-                    isTeacherPreview = true,
-                    activeSelection = preview,
-                    weeks = emptyList(),
-                    lessons = emptyList(),
-                    siteMessage = null,
-                    error = null,
-                    notice = null,
-                )
-            }
-            repository.cachedWeeks(preview).takeIf { it.isNotEmpty() }?.let { cached ->
-                _state.update { it.copy(weeks = cached) }
-            }
-            loadWeek(_state.value.weekMonday, force = false)
-        }
-    }
-
-    fun closeTeacherPreview() {
-        val saved = _state.value.selection ?: return
-        if (!_state.value.isTeacherPreview) return
-        _state.update {
-            it.copy(
-                isTeacherPreview = false,
-                activeSelection = saved,
-                weeks = emptyList(),
-                lessons = emptyList(),
-                siteMessage = null,
-                error = null,
-                notice = null,
-            )
-        }
-        loadWeek(_state.value.weekMonday, force = false)
     }
 
     private fun moveWeek(delta: Int) {
@@ -242,8 +279,13 @@ class ScheduleViewModel(
             selected
         }
 
+    private fun activeSelectionKey(): String? = _state.value.activeSelection?.cacheKey
+
     private fun loadWeek(monday: LocalDate, force: Boolean) {
-        val selection = _state.value.activeSelection ?: return
+        val selection = _state.value.activeSelection ?: run {
+            _state.update { it.copy(loading = false, refreshing = false) }
+            return
+        }
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             val sameWeek = _state.value.weekMonday == monday
@@ -261,7 +303,16 @@ class ScheduleViewModel(
                 )
             }
 
+            if (_state.value.weeks.isEmpty()) {
+                val cachedWeeks = repository.cachedWeeks(selection)
+                if (activeSelectionKey() == selection.cacheKey && cachedWeeks.isNotEmpty()) {
+                    _state.update { it.copy(weeks = cachedWeeks) }
+                }
+            }
+            if (activeSelectionKey() != selection.cacheKey) return@launch
+
             val cached = repository.cachedWeek(selection, monday).first()
+            if (activeSelectionKey() != selection.cacheKey) return@launch
             if (cached != null) {
                 _state.update {
                     it.copy(
@@ -277,6 +328,7 @@ class ScheduleViewModel(
 
             try {
                 val page = repository.loadWeek(selection, monday, force)
+                if (activeSelectionKey() != selection.cacheKey) return@launch
                 _state.update {
                     it.copy(
                         weekMonday = page.schedule.weekMonday,
@@ -294,15 +346,20 @@ class ScheduleViewModel(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                if (error is IseuException.CatalogStale && !_state.value.isTeacherPreview) {
+                if (activeSelectionKey() != selection.cacheKey) return@launch
+                if (error is IseuException.CatalogStale &&
+                    selection.cacheKey == _state.value.selection?.cacheKey
+                ) {
                     runCatching { repository.clearSelection() }
                     runCatching { repository.clearCatalogCache() }
                 }
                 val message = when (error) {
                     is IseuException.CatalogStale ->
                         "Сохранённая группа или преподаватель больше не доступны. Выберите заново."
+
                     is IseuException ->
                         error.message.orEmpty().ifEmpty { "Не удалось загрузить расписание" }
+
                     else -> "Не удалось загрузить расписание"
                 }
                 _state.update {

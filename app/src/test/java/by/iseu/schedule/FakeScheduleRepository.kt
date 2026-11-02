@@ -25,6 +25,7 @@ class FakeScheduleRepository : ScheduleRepository {
     var teachers = listOf(Option("-414", "Авдеева Екатерина Владимировна (пр.)"))
 
     var loadGroupsError: Throwable? = null
+    var loadTeachersError: Throwable? = null
     var loadWeekError: Throwable? = null
     var loadWeekCalls = 0
     var clearSelectionCalls = 0
@@ -79,7 +80,10 @@ class FakeScheduleRepository : ScheduleRepository {
         return groups
     }
 
-    override suspend fun loadTeachers(force: Boolean): List<Option> = teachers
+    override suspend fun loadTeachers(force: Boolean): List<Option> {
+        loadTeachersError?.let { throw it }
+        return teachers
+    }
 
     override fun cachedWeek(
         selection: ScheduleSelection,

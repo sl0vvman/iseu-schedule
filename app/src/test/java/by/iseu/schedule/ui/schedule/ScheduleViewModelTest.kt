@@ -17,7 +17,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -174,18 +173,43 @@ class ScheduleViewModelTest {
     }
 
     @Test
-    fun `opens a teacher schedule and returns to the saved group`() = runTest(dispatcher) {
+    fun `teacher tab loads the catalog without touching the saved group`() = runTest(dispatcher) {
+        val fake = FakeScheduleRepository().apply {
+            selection.value = groupSelection()
+            teachers = listOf(
+                Option("-446", "Авласович Алексей Михайлович (доц.)"),
+                Option("-414", "Авдеева Екатерина Владимировна (пр.)"),
+            )
+        }
+        val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
+        advanceUntilIdle()
+        val groupLoads = fake.loadWeekCalls
+
+        vm.selectTab(ScheduleTab.TEACHERS)
+        advanceUntilIdle()
+
+        assertEquals(ScheduleTab.TEACHERS, vm.state.value.tab)
+        assertEquals(2, vm.state.value.teachers.size)
+        assertNull(vm.state.value.activeSelection)
+        assertEquals(groupLoads, fake.loadWeekCalls)
+        assertEquals(Mode.GROUP, fake.selection.value?.mode)
+    }
+
+    @Test
+    fun `selecting a teacher shows their schedule and keeps the saved group`() = runTest(dispatcher) {
         val fake = FakeScheduleRepository().apply {
             selection.value = groupSelection()
             teachers = listOf(Option("-446", "Авласович Алексей Михайлович (доц.)"))
         }
         val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
         advanceUntilIdle()
-
-        vm.openTeacher("доц. Авласович Алексей Михайлович")
+        vm.selectTab(ScheduleTab.TEACHERS)
         advanceUntilIdle()
 
-        assertTrue(vm.state.value.isTeacherPreview)
+        vm.selectTeacher(fake.teachers.first())
+        advanceUntilIdle()
+
+        assertEquals(ScheduleTab.TEACHERS, vm.state.value.tab)
         assertEquals(Mode.TEACHER, vm.state.value.activeSelection?.mode)
         assertEquals(
             "Авласович Алексей Михайлович (доц.)",
@@ -193,51 +217,103 @@ class ScheduleViewModelTest {
         )
         assertEquals(Mode.GROUP, fake.selection.value?.mode)
         assertEquals(Mode.TEACHER, fake.loadedSelections.last().mode)
-
-        vm.closeTeacherPreview()
-        advanceUntilIdle()
-
-        assertFalse(vm.state.value.isTeacherPreview)
-        assertEquals(Mode.GROUP, vm.state.value.activeSelection?.mode)
-        assertEquals(Mode.GROUP, fake.loadedSelections.last().mode)
-        assertEquals(Mode.GROUP, fake.selection.value?.mode)
+        assertEquals(LocalDate.of(2026, 11, 2), vm.state.value.weekMonday)
     }
 
     @Test
-    fun `selection re-emission does not close a teacher preview`() = runTest(dispatcher) {
+    fun `closing a teacher returns to the teacher list`() = runTest(dispatcher) {
         val fake = FakeScheduleRepository().apply {
             selection.value = groupSelection()
             teachers = listOf(Option("-446", "Авласович Алексей Михайлович (доц.)"))
         }
         val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
         advanceUntilIdle()
-        vm.openTeacher("доц. Авласович Алексей Михайлович")
+        vm.selectTab(ScheduleTab.TEACHERS)
         advanceUntilIdle()
-        assertTrue(vm.state.value.isTeacherPreview)
-
-        val saved = fake.groupSelection()
-        fake.selection.value = saved.copy(
-            group = saved.group!!.copy(label = "${saved.group.label} "),
-        )
+        vm.selectTeacher(fake.teachers.first())
         advanceUntilIdle()
 
-        assertTrue(vm.state.value.isTeacherPreview)
+        vm.closeTeacher()
+        advanceUntilIdle()
+
+        assertEquals(ScheduleTab.TEACHERS, vm.state.value.tab)
+        assertNull(vm.state.value.activeSelection)
+        assertTrue(vm.state.value.lessons.isEmpty())
+        assertEquals(Mode.GROUP, fake.selection.value?.mode)
     }
 
     @Test
-    fun `unknown teacher in a group lesson produces a notice, not a preview`() = runTest(dispatcher) {
+    fun `switching back to the schedule tab reloads the saved group`() = runTest(dispatcher) {
         val fake = FakeScheduleRepository().apply {
             selection.value = groupSelection()
+            teachers = listOf(Option("-446", "Авласович Алексей Михайлович (доц.)"))
+        }
+        val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
+        advanceUntilIdle()
+        vm.selectTab(ScheduleTab.TEACHERS)
+        advanceUntilIdle()
+        vm.selectTeacher(fake.teachers.first())
+        advanceUntilIdle()
+
+        vm.selectTab(ScheduleTab.SCHEDULE)
+        advanceUntilIdle()
+
+        assertEquals(ScheduleTab.SCHEDULE, vm.state.value.tab)
+        assertEquals(Mode.GROUP, vm.state.value.activeSelection?.mode)
+        assertEquals(Mode.GROUP, fake.loadedSelections.last().mode)
+    }
+
+    @Test
+    fun `teacher catalog failure shows an error and retry recovers`() = runTest(dispatcher) {
+        val fake = FakeScheduleRepository().apply {
+            selection.value = groupSelection()
+            loadTeachersError = IseuException.Network(IOException("offline"))
         }
         val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
         advanceUntilIdle()
 
-        vm.openTeacher("пр. Неизвестный Иван Иванович")
+        vm.selectTab(ScheduleTab.TEACHERS)
         advanceUntilIdle()
 
-        assertFalse(vm.state.value.isTeacherPreview)
-        assertNotNull(vm.state.value.notice)
-        assertEquals(Mode.GROUP, vm.state.value.activeSelection?.mode)
+        assertNotNull(vm.state.value.teachersError)
+        assertTrue(vm.state.value.teachers.isEmpty())
+
+        fake.loadTeachersError = null
+        fake.teachers = listOf(Option("-446", "Авласович Алексей Михайлович (доц.)"))
+        vm.reloadTeachers()
+        advanceUntilIdle()
+
+        assertNull(vm.state.value.teachersError)
+        assertEquals(1, vm.state.value.teachers.size)
+    }
+
+    @Test
+    fun `saved target change does not replace an open teacher schedule`() = runTest(dispatcher) {
+        val fake = FakeScheduleRepository().apply {
+            selection.value = groupSelection()
+            teachers = listOf(Option("-446", "Авласович Алексей Михайлович (доц.)"))
+        }
+        val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
+        advanceUntilIdle()
+        vm.selectTab(ScheduleTab.TEACHERS)
+        advanceUntilIdle()
+        vm.selectTeacher(fake.teachers.first())
+        advanceUntilIdle()
+        val loads = fake.loadWeekCalls
+
+        fake.selection.value = ScheduleSelection(
+            mode = Mode.GROUP,
+            faculty = fake.faculties.first(),
+            form = fake.forms.first(),
+            course = fake.courses.first(),
+            group = Option("370", "А62ИТ1"),
+        )
+        advanceUntilIdle()
+
+        assertEquals(ScheduleTab.TEACHERS, vm.state.value.tab)
+        assertEquals(Mode.TEACHER, vm.state.value.activeSelection?.mode)
+        assertEquals(loads, fake.loadWeekCalls)
+        assertEquals("А62ИТ1", vm.state.value.selection?.targetLabel)
     }
 
     private fun sampleLesson() = Lesson(

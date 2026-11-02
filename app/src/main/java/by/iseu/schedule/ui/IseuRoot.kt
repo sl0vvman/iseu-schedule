@@ -38,6 +38,9 @@ fun IseuRoot(repository: ScheduleRepository) {
     BackHandler(enabled = screen == RootScreen.SETTINGS) {
         screen = RootScreen.MAIN
     }
+    BackHandler(enabled = editing) {
+        editing = false
+    }
 
     when (screen) {
         RootScreen.SETTINGS -> SettingsScreen(
