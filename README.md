@@ -1,0 +1,76 @@
+# ISEU
+
+Лёгкое Android-приложение с расписанием Международного государственного
+экологического института им. А. Д. Сахарова (БГУ). Работает напрямую с
+сайтом `rsp.iseu.by`, без собственного сервера, аккаунтов и уведомлений.
+
+## Возможности
+
+- Расписание группы: факультет → форма обучения → курс → группа.
+- Расписание преподавателя: поиск по ФИО или должности.
+- Навигация по неделям, выделение текущего дня, кнопка «Текущая».
+- Подгруппы помечаются бейджем и пунктирной линией; фильтра нет.
+- Офлайн-кэш последних загруженных недель и каталога.
+- Монохромная светлая и тёмная тема, выбор темы в настройках.
+- `minSdk 24`, целевая версия Android 15.
+
+## Источник данных
+
+- Группы: `http://rsp.iseu.by/Raspisanie/TimeTable/umu.aspx`
+- Преподаватели: `http://rsp.iseu.by/Raspisanie/TimeTable/umuteachers.aspx`
+
+Сайт — ASP.NET WebForms без JSON API. Приложение повторяет цепочку
+`__VIEWSTATE`-постбэков и разбирает `table#TT` через Jsoup. HTTPS у сайта
+невалиден, поэтому cleartext HTTP разрешён только для `rsp.iseu.by`
+(`res/xml/network_security_config.xml`).
+
+## Сборка
+
+Нужны JDK 17 и Android SDK 35. Скрипт `scripts/env.sh` задаёт пути к
+локально установленным инструментам.
+
+```bash
+source scripts/env.sh
+./gradlew :app:testDebugUnitTest
+./gradlew :app:assembleDebug
+```
+
+Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+Release-сборка:
+
+```bash
+./gradlew :app:assembleRelease
+```
+
+Release APK подписывается debug-ключом этой машины (см.
+`app/build.gradle.kts`) и сжимается R8. Для обновления приложения нужен
+тот же `~/.android/debug.keystore`; иначе приложение придётся удалить и
+установить заново.
+
+## Живая проверка парсера
+
+```bash
+ISEU_LIVE=1 ./gradlew :app:testDebugUnitTest --tests '*LiveFetchTest*'
+```
+
+Тест обращается к реальному сайту и проверяет полный каскад для группы и
+преподавателя.
+
+## Ограничения
+
+- Нет уведомлений, виджетов и фонового обновления.
+- Нет своего бэкенда: при недоступности сайта показывается кэш.
+- Разметка сайта может измениться; в этом случае парсер вернёт понятную
+  ошибку, а кэш не затрётся.
+- Значения факультетов и групп меняются каждый семестр и читаются с сайта
+  динамически.
+
+## Стек
+
+Kotlin 2.1, Jetpack Compose, Material 3, OkHttp, Jsoup, Room, DataStore,
+kotlinx.serialization, Coroutines.
