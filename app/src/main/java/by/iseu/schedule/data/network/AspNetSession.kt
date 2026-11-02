@@ -60,7 +60,7 @@ class AspNetSession(
         }
 
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            if (!response.isSuccessful) throw SiteHttpException(response.code)
             val html = response.body?.string().orEmpty()
             return Jsoup.parse(html, url)
         }
