@@ -5,6 +5,8 @@ import by.iseu.schedule.data.model.IseuException
 import by.iseu.schedule.data.model.Lesson
 import by.iseu.schedule.data.model.LessonType
 import by.iseu.schedule.data.model.Mode
+import by.iseu.schedule.data.model.Option
+import by.iseu.schedule.data.model.ScheduleSelection
 import by.iseu.schedule.data.model.WeekSchedule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -61,6 +63,28 @@ class ScheduleViewModelTest {
         vm.previousWeek()
         advanceUntilIdle()
         assertEquals(LocalDate.of(2026, 11, 2), vm.state.value.weekMonday)
+    }
+
+    @Test
+    fun `reloads schedule when the saved selection changes`() = runTest(dispatcher) {
+        val fake = FakeScheduleRepository().apply {
+            selection.value = groupSelection()
+        }
+        val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
+        advanceUntilIdle()
+        assertEquals(Mode.GROUP, vm.state.value.selection?.mode)
+        assertEquals("А61ИТ1", vm.state.value.selection?.targetLabel)
+        val loadsBefore = fake.loadWeekCalls
+
+        fake.selection.value = ScheduleSelection(
+            mode = Mode.TEACHER,
+            teacher = Option("-414", "Авдеева Екатерина Владимировна (пр.)"),
+        )
+        advanceUntilIdle()
+
+        assertEquals(Mode.TEACHER, vm.state.value.selection?.mode)
+        assertEquals("Авдеева Екатерина Владимировна (пр.)", vm.state.value.selection?.targetLabel)
+        assertTrue(fake.loadWeekCalls > loadsBefore)
     }
 
     @Test

@@ -12,6 +12,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -46,15 +47,34 @@ class ScheduleViewModel(
 
     init {
         viewModelScope.launch {
-            val selection = repository.selectionFlow().filterNotNull().first()
-            _state.update { it.copy(selection = selection) }
+            repository.selectionFlow().filterNotNull().collectLatest { selection ->
+                val previous = _state.value.selection
+                val changed = previous != null && previous.cacheKey != selection.cacheKey
 
-            val cachedWeeks = repository.cachedWeeks(selection)
-            if (cachedWeeks.isNotEmpty()) {
-                _state.update { it.copy(weeks = cachedWeeks) }
+                _state.update {
+                    it.copy(
+                        selection = selection,
+                        weekMonday = if (changed || previous == null) {
+                            WeekSelector.mondayOf(today())
+                        } else {
+                            it.weekMonday
+                        },
+                        weeks = if (changed) emptyList() else it.weeks,
+                        lessons = if (changed) emptyList() else it.lessons,
+                        siteMessage = if (changed) null else it.siteMessage,
+                        error = null,
+                    )
+                }
+
+                if (changed || previous == null) {
+                    val cachedWeeks = repository.cachedWeeks(selection)
+                    if (cachedWeeks.isNotEmpty()) {
+                        _state.update { it.copy(weeks = cachedWeeks) }
+                    }
+                }
+
+                loadWeek(_state.value.weekMonday, force = false)
             }
-
-            loadWeek(_state.value.weekMonday, force = false)
         }
     }
 

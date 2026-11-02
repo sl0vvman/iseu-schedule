@@ -18,10 +18,12 @@ import by.iseu.schedule.data.network.SiteHttpException
 import by.iseu.schedule.data.parser.ScheduleParser
 import by.iseu.schedule.data.parser.WeekSelector
 import by.iseu.schedule.data.prefs.SelectionStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -296,26 +298,28 @@ class DefaultScheduleRepository(
             .getOrDefault(emptyList())
     }
 
-    private suspend fun <T> network(block: suspend () -> T): T = mutex.withLock {
-        var last: Throwable? = null
-        repeat(2) {
-            try {
-                return@withLock block()
-            } catch (error: SiteHttpException) {
-                if (error.status !in 500..599) throw IseuException.Site(error.status)
-                last = error
-            } catch (error: IOException) {
-                last = error
-            } catch (error: IseuException) {
-                throw error
-            } catch (error: Exception) {
-                throw IseuException.Parse(error)
+    private suspend fun <T> network(block: suspend () -> T): T = onIo {
+        mutex.withLock {
+            var last: Throwable? = null
+            repeat(2) {
+                try {
+                    return@withLock block()
+                } catch (error: SiteHttpException) {
+                    if (error.status !in 500..599) throw IseuException.Site(error.status)
+                    last = error
+                } catch (error: IOException) {
+                    last = error
+                } catch (error: IseuException) {
+                    throw error
+                } catch (error: Exception) {
+                    throw IseuException.Parse(error)
+                }
             }
-        }
-        when (val error = last) {
-            is SiteHttpException -> throw IseuException.Site(error.status)
-            is IOException -> throw IseuException.Network(error)
-            else -> throw IseuException.Network(IOException("unknown failure", error))
+            when (val error = last) {
+                is SiteHttpException -> throw IseuException.Site(error.status)
+                is IOException -> throw IseuException.Network(error)
+                else -> throw IseuException.Network(IOException("unknown failure", error))
+            }
         }
     }
 
@@ -337,4 +341,8 @@ class DefaultScheduleRepository(
         const val GROUP_URL = "http://rsp.iseu.by/Raspisanie/TimeTable/umu.aspx"
         const val TEACHER_URL = "http://rsp.iseu.by/Raspisanie/TimeTable/umuteachers.aspx"
     }
+}
+
+internal suspend fun <T> onIo(block: suspend () -> T): T = withContext(Dispatchers.IO) {
+    block()
 }
