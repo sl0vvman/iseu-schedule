@@ -1,0 +1,3 @@
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.**
+-keepclassmembers class by.iseu.schedule.data.model.** { *; }

@@ -1,0 +1,366 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<!--[if lt IE 7 ]> <html class="ie6" xmlns="http://www.w3.org/1999/xhtml"> <![endif]-->
+<!--[if IE 7 ]>    <html class="ie7" xmlns="http://www.w3.org/1999/xhtml"> <![endif]-->
+<!--[if IE 8 ]>    <html class="ie8" xmlns="http://www.w3.org/1999/xhtml"> <![endif]-->
+<!--[if IE 9 ]>    <html class="ie9" xmlns="http://www.w3.org/1999/xhtml"> <![endif]-->
+<!--[if (gt IE 9)|!(IE)]><!--> <html class="" xmlns="http://www.w3.org/1999/xhtml"> <!--<![endif]-->
+<head><title>
+</title>
+<!--[if lt IE 8 ]><script type="text/javascript" src="../Scripts/jquery-1.4.1.min.js"></script><![endif]-->
+<!--[if (gt IE 9)|!(IE)]><!-->
+<script src="../Scripts/jquery-2.1.1.min.js" type="text/javascript"></script>
+<script src="../Scripts/jquery-ui.min-1.11.1.js" type="text/javascript"></script>
+<!--<![endif]-->
+<link href="../Scripts/jqPlugins/chosen/chosen.min.css" rel="stylesheet" type="text/css"/>
+<script src="../Scripts/chosen.jquery.js" type="text/javascript"></script>
+<script type="text/javascript">
+        $(function () {
+            $('#iframeheight').val(Math.max($('html').height(), 400));
+            var oldIE;
+            if ($('html').is('.ie6, .ie7, .ie8')) {
+                oldIE = true;
+            }
+
+            if (oldIE) {
+                $('.show').addClass('hidden');
+            } else {
+                $('select:not(.hidden)').chosen({
+                    no_results_text: "Translated No results matched",
+                    placeholder_text_single: "Выберите элемент"
+                });
+                $('#ShowTT').addClass('hidden');
+                $('.show').click(function () {
+                    $('#ShowTT').click();
+                });
+                $('.chosen-default span').html('Нет данных для выборки');
+                $('div.chosen-search input').keyup(function () {
+                    var parent = $(this).parent().parent().parent().attr('id');
+                    console.log(parent);
+                    var spanVal = $('#' + parent + ' ul.chosen-results li.no-results span').html();
+                    $('ul.chosen-results li.no-results').html('По запросу "<span>' + spanVal + '</span>" ничего не найдено.');
+                });
+            }
+        });
+    </script>
+<link href="../Styles/mobile-promotion.css" rel="stylesheet" type="text/css"/>
+<script src="../Scripts/mobile-promotion.js" type="text/javascript"></script>
+<style type="text/css">
+        #ddlWeek_chosen, #ddlCourse_chosen { width:100px !important; }
+        #ddlFac_chosen div.chosen-search { width:98%; }
+        #lMessage { width:100%; }
+        #TT { border-collapse:collapse; width:100%; margin-top:20px; }
+    </style>
+<link href="../Styles/styles.css" rel="stylesheet" type="text/css"/><link href="../Styles/StudySchedule.css" rel="stylesheet" type="text/css"/>
+<style>
+        .cell-empty,.cell-time,.cell-subgroup,.cell-discipline,.cell-staff,.cell-auditory
+        {
+            padding-left:4px;
+            border-left:1px solid Gray;
+        }
+        .topic
+        {
+            display: inherit;
+            border-top: 1px solid gray;
+        }
+    </style>
+</head>
+<body>
+<div style="position:relative;">
+<h2>Расписание занятий для студента</h2>
+</div><br/>
+<br/>   <br/>
+<form action="./umu.aspx" id="form1" method="post">
+<div class="aspNetHidden">
+<input id="__EVENTTARGET" name="__EVENTTARGET" type="hidden" value=""/>
+<input id="__EVENTARGUMENT" name="__EVENTARGUMENT" type="hidden" value=""/>
+<input id="__LASTFOCUS" name="__LASTFOCUS" type="hidden" value=""/>
+<input id="__VIEWSTATE" name="__VIEWSTATE" type="hidden" value="/wEPDwULLTEyOTQ4MzI4MDAPZBYEAgEPDxYCHgdWaXNpYmxlaGRkAgIPZBYaAgMPEGRkFgFmZAIHDxAPFgYeCENzc0NsYXNzZR4LXyFEYXRhQm91bmRnHgRfIVNCAgJkEBUDowLQpNCw0LrRg9C70YzRgtC10YIg0LzQvtC90LjRgtC+0YDQuNC90LPQsCDQvtC60YDRg9C20LDRjtGJ0LXQuSDRgdGA0LXQtNGLICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICCtAtCk0LDQutGD0LvRjNGC0LXRgiDQv9C+0LLRi9GI0LXQvdC40Y8g0LrQstCw0LvQuNGE0LjQutCw0YbQuNC4INC4INC/0LXRgNC10L/QvtC00LPQvtGC0L7QstC60LggICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICCeAtCk0LDQutGD0LvRjNGC0LXRgiDRjdC60L7Qu9C+0LPQuNGH0LXRgdC60L7QuSDQvNC10LTQuNGG0LjQvdGLICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAVAwEyATMBNBQrAwNnZ2dkZAIJDw9kDxAWAmYCARYCFgIeDlBhcmFtZXRlclZhbHVlBQExFgIfBGQWAmYCBGRkAg0PEA8WAh8CZ2QQFQJw0LTQvdC10LLQvdCw0Y8g0YTQvtGA0LzQsCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHDQt9Cw0L7Rh9C90LDRjyDRhNC+0YDQvNCwICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgFQIBMgEzFCsDAmdnZGQCDw8PZA8QFgFmFgEWAh8EBQExFgFmZGQCEw8QDxYCHwJnZBAVBQoxINC60YPRgNGBCjIg0LrRg9GA0YEKMyDQutGD0YDRgQo0INC60YPRgNGBCjUg0LrRg9GA0YEVBQExATIBMwE0ATUUKwMFZ2dnZ2dkZAIVDw9kDxAWA2YCAQICFgMWAh8EBQExFgIfBAUBMhYCHwQFATIWA2ZmZmRkAhkPEA8WAh8CZ2QQFQcJ0JA2MdCY0KIxCdCQNjHQmNCiMgnQkDYx0JjQojMJ0JA2MdCc0KQxCdCQNjHQrdCRMQnQkDYx0K3QkTIJ0JA2MdCv0JExFQcDMzY5AzM3MAMzNzEDMzY2AzM2NwMzNjgDMzY1FCsDB2dnZ2dnZ2dkZAIbDw9kDxAWB2YCAQICAgMCBAIFAgYWBxYCHwQFATEWAh8EBQEyFgIfBAUBMhYCHwQFATEWAh8EZBYCHwRkFgIfBGQWB2ZmZmYCAwIDAgNkZAIfDxAPFgIfAmdkEBV3CjE4LjAxLjIwMjcKMTEuMDEuMjAyNwowNC4wMS4yMDI3CjI4LjEyLjIwMjYKMjEuMTIuMjAyNgoxNC4xMi4yMDI2CjA3LjEyLjIwMjYKMzAuMTEuMjAyNgoyMy4xMS4yMDI2CjE2LjExLjIwMjYKMDkuMTEuMjAyNgowMi4xMS4yMDI2CjI2LjEwLjIwMjYKMTkuMTAuMjAyNgoxMi4xMC4yMDI2CjA1LjEwLjIwMjYKMjguMDkuMjAyNgoyMS4wOS4yMDI2CjE0LjA5LjIwMjYKMDcuMDkuMjAyNgozMS4wOC4yMDI2CjI0LjA4LjIwMjYKMTcuMDguMjAyNgoxMC4wOC4yMDI2CjAzLjA4LjIwMjYKMjcuMDcuMjAyNgoyMC4wNy4yMDI2CjEzLjA3LjIwMjYKMDYuMDcuMjAyNgoyOS4wNi4yMDI2CjIyLjA2LjIwMjYKMTUuMDYuMjAyNgowOC4wNi4yMDI2CjAxLjA2LjIwMjYKMjUuMDUuMjAyNgoxOC4wNS4yMDI2CjExLjA1LjIwMjYKMDQuMDUuMjAyNgoyNy4wNC4yMDI2CjIwLjA0LjIwMjYKMTMuMDQuMjAyNgowNi4wNC4yMDI2CjMwLjAzLjIwMjYKMjMuMDMuMjAyNgoxNi4wMy4yMDI2CjA5LjAzLjIwMjYKMDIuMDMuMjAyNgoyMy4wMi4yMDI2CjE2LjAyLjIwMjYKMDkuMDIuMjAyNgowMi4wMi4yMDI2CjI2LjAxLjIwMjYKMTkuMDEuMjAyNgoxMi4wMS4yMDI2CjA1LjAxLjIwMjYKMjkuMTIuMjAyNQoyMi4xMi4yMDI1CjE1LjEyLjIwMjUKMDguMTIuMjAyNQowMS4xMi4yMDI1CjI0LjExLjIwMjUKMTcuMTEuMjAyNQoxMC4xMS4yMDI1CjAzLjExLjIwMjUKMjcuMTAuMjAyNQoyMC4xMC4yMDI1CjEzLjEwLjIwMjUKMDYuMTAuMjAyNQoyOS4wOS4yMDI1CjIyLjA5LjIwMjUKMTUuMDkuMjAyNQowOC4wOS4yMDI1CjAxLjA5LjIwMjUKMTQuMDcuMjAyNQowNy4wNy4yMDI1CjMwLjA2LjIwMjUKMjMuMDYuMjAyNQoxNi4wNi4yMDI1CjA5LjA2LjIwMjUKMDIuMDYuMjAyNQoyNi4wNS4yMDI1CjE5LjA1LjIwMjUKMTIuMDUuMjAyNQowNS4wNS4yMDI1CjI4LjA0LjIwMjUKMjEuMDQuMjAyNQoxNC4wNC4yMDI1CjA3LjA0LjIwMjUKMzEuMDMuMjAyNQoyNC4wMy4yMDI1CjE3LjAzLjIwMjUKMTAuMDMuMjAyNQowMy4wMy4yMDI1CjI0LjAyLjIwMjUKMTcuMDIuMjAyNQoxMC4wMi4yMDI1CjAzLjAyLjIwMjUKMjcuMDEuMjAyNQoyMC4wMS4yMDI1CjEzLjAxLjIwMjUKMDYuMDEuMjAyNQozMC4xMi4yMDI0CjIzLjEyLjIwMjQKMTYuMTIuMjAyNAowOS4xMi4yMDI0CjAyLjEyLjIwMjQKMjUuMTEuMjAyNAoxOC4xMS4yMDI0CjExLjExLjIwMjQKMDQuMTEuMjAyNAoyOC4xMC4yMDI0CjIxLjEwLjIwMjQKMTQuMTAuMjAyNAowNy4xMC4yMDI0CjMwLjA5LjIwMjQKMjMuMDkuMjAyNAoxNi4wOS4yMDI0CjA5LjA5LjIwMjQKMDIuMDkuMjAyNBV3EjE4LjAxLjIwMjcgMDowMDowMBIxMS4wMS4yMDI3IDA6MDA6MDASMDQuMDEuMjAyNyAwOjAwOjAwEjI4LjEyLjIwMjYgMDowMDowMBIyMS4xMi4yMDI2IDA6MDA6MDASMTQuMTIuMjAyNiAwOjAwOjAwEjA3LjEyLjIwMjYgMDowMDowMBIzMC4xMS4yMDI2IDA6MDA6MDASMjMuMTEuMjAyNiAwOjAwOjAwEjE2LjExLjIwMjYgMDowMDowMBIwOS4xMS4yMDI2IDA6MDA6MDASMDIuMTEuMjAyNiAwOjAwOjAwEjI2LjEwLjIwMjYgMDowMDowMBIxOS4xMC4yMDI2IDA6MDA6MDASMTIuMTAuMjAyNiAwOjAwOjAwEjA1LjEwLjIwMjYgMDowMDowMBIyOC4wOS4yMDI2IDA6MDA6MDASMjEuMDkuMjAyNiAwOjAwOjAwEjE0LjA5LjIwMjYgMDowMDowMBIwNy4wOS4yMDI2IDA6MDA6MDASMzEuMDguMjAyNiAwOjAwOjAwEjI0LjA4LjIwMjYgMDowMDowMBIxNy4wOC4yMDI2IDA6MDA6MDASMTAuMDguMjAyNiAwOjAwOjAwEjAzLjA4LjIwMjYgMDowMDowMBIyNy4wNy4yMDI2IDA6MDA6MDASMjAuMDcuMjAyNiAwOjAwOjAwEjEzLjA3LjIwMjYgMDowMDowMBIwNi4wNy4yMDI2IDA6MDA6MDASMjkuMDYuMjAyNiAwOjAwOjAwEjIyLjA2LjIwMjYgMDowMDowMBIxNS4wNi4yMDI2IDA6MDA6MDASMDguMDYuMjAyNiAwOjAwOjAwEjAxLjA2LjIwMjYgMDowMDowMBIyNS4wNS4yMDI2IDA6MDA6MDASMTguMDUuMjAyNiAwOjAwOjAwEjExLjA1LjIwMjYgMDowMDowMBIwNC4wNS4yMDI2IDA6MDA6MDASMjcuMDQuMjAyNiAwOjAwOjAwEjIwLjA0LjIwMjYgMDowMDowMBIxMy4wNC4yMDI2IDA6MDA6MDASMDYuMDQuMjAyNiAwOjAwOjAwEjMwLjAzLjIwMjYgMDowMDowMBIyMy4wMy4yMDI2IDA6MDA6MDASMTYuMDMuMjAyNiAwOjAwOjAwEjA5LjAzLjIwMjYgMDowMDowMBIwMi4wMy4yMDI2IDA6MDA6MDASMjMuMDIuMjAyNiAwOjAwOjAwEjE2LjAyLjIwMjYgMDowMDowMBIwOS4wMi4yMDI2IDA6MDA6MDASMDIuMDIuMjAyNiAwOjAwOjAwEjI2LjAxLjIwMjYgMDowMDowMBIxOS4wMS4yMDI2IDA6MDA6MDASMTIuMDEuMjAyNiAwOjAwOjAwEjA1LjAxLjIwMjYgMDowMDowMBIyOS4xMi4yMDI1IDA6MDA6MDASMjIuMTIuMjAyNSAwOjAwOjAwEjE1LjEyLjIwMjUgMDowMDowMBIwOC4xMi4yMDI1IDA6MDA6MDASMDEuMTIuMjAyNSAwOjAwOjAwEjI0LjExLjIwMjUgMDowMDowMBIxNy4xMS4yMDI1IDA6MDA6MDASMTAuMTEuMjAyNSAwOjAwOjAwEjAzLjExLjIwMjUgMDowMDowMBIyNy4xMC4yMDI1IDA6MDA6MDASMjAuMTAuMjAyNSAwOjAwOjAwEjEzLjEwLjIwMjUgMDowMDowMBIwNi4xMC4yMDI1IDA6MDA6MDASMjkuMDkuMjAyNSAwOjAwOjAwEjIyLjA5LjIwMjUgMDowMDowMBIxNS4wOS4yMDI1IDA6MDA6MDASMDguMDkuMjAyNSAwOjAwOjAwEjAxLjA5LjIwMjUgMDowMDowMBIxNC4wNy4yMDI1IDA6MDA6MDASMDcuMDcuMjAyNSAwOjAwOjAwEjMwLjA2LjIwMjUgMDowMDowMBIyMy4wNi4yMDI1IDA6MDA6MDASMTYuMDYuMjAyNSAwOjAwOjAwEjA5LjA2LjIwMjUgMDowMDowMBIwMi4wNi4yMDI1IDA6MDA6MDASMjYuMDUuMjAyNSAwOjAwOjAwEjE5LjA1LjIwMjUgMDowMDowMBIxMi4wNS4yMDI1IDA6MDA6MDASMDUuMDUuMjAyNSAwOjAwOjAwEjI4LjA0LjIwMjUgMDowMDowMBIyMS4wNC4yMDI1IDA6MDA6MDASMTQuMDQuMjAyNSAwOjAwOjAwEjA3LjA0LjIwMjUgMDowMDowMBIzMS4wMy4yMDI1IDA6MDA6MDASMjQuMDMuMjAyNSAwOjAwOjAwEjE3LjAzLjIwMjUgMDowMDowMBIxMC4wMy4yMDI1IDA6MDA6MDASMDMuMDMuMjAyNSAwOjAwOjAwEjI0LjAyLjIwMjUgMDowMDowMBIxNy4wMi4yMDI1IDA6MDA6MDASMTAuMDIuMjAyNSAwOjAwOjAwEjAzLjAyLjIwMjUgMDowMDowMBIyNy4wMS4yMDI1IDA6MDA6MDASMjAuMDEuMjAyNSAwOjAwOjAwEjEzLjAxLjIwMjUgMDowMDowMBIwNi4wMS4yMDI1IDA6MDA6MDASMzAuMTIuMjAyNCAwOjAwOjAwEjIzLjEyLjIwMjQgMDowMDowMBIxNi4xMi4yMDI0IDA6MDA6MDASMDkuMTIuMjAyNCAwOjAwOjAwEjAyLjEyLjIwMjQgMDowMDowMBIyNS4xMS4yMDI0IDA6MDA6MDASMTguMTEuMjAyNCAwOjAwOjAwEjExLjExLjIwMjQgMDowMDowMBIwNC4xMS4yMDI0IDA6MDA6MDASMjguMTAuMjAyNCAwOjAwOjAwEjIxLjEwLjIwMjQgMDowMDowMBIxNC4xMC4yMDI0IDA6MDA6MDASMDcuMTAuMjAyNCAwOjAwOjAwEjMwLjA5LjIwMjQgMDowMDowMBIyMy4wOS4yMDI0IDA6MDA6MDASMTYuMDkuMjAyNCAwOjAwOjAwEjA5LjA5LjIwMjQgMDowMDowMBIwMi4wOS4yMDI0IDA6MDA6MDAUKwN3Z2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dkZAIlDw8WAh4LTmF2aWdhdGVVcmwFS1ByaW50UGFnZS5hc3B4P2FyZzA9MzY5JmFyZzE9MiZhcmcyPTImYXJnMz0xJmFyZzQ9MSZkYXRlPTAyLjExLjIwMjYgMDowMDowMGRkAicPDxYGHwFlHwMCAh4EVGV4dGVkZAIpDw8WAh4HQ2FwdGlvbgW4AtCg0LDRgdC/0LjRgdCw0L3QuNC1INC30LDQvdGP0YLQuNC5INC90LAg0L3QtdC00LXQu9GOINGBIDAyLjExLjIwMjY8L2JyPtCk0LDQutGD0LvRjNGC0LXRgiDQvNC+0L3QuNGC0L7RgNC40L3Qs9CwINC+0LrRgNGD0LbQsNGO0YnQtdC5INGB0YDQtdC00YssINC00L3QtdCy0L3QsNGPINGE0L7RgNC80LAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg0L7QsdGD0YfQtdC90LjRjywgMSDQutGD0YDRgSwg0LPRgNGD0L/Qv9CwINCQNjHQmNCiMWRkZOA7/lhn2peRZnh45ShQkV79WyiL"/>
+</div>
+<script type="text/javascript">
+//<![CDATA[
+var theForm = document.forms['form1'];
+if (!theForm) {
+    theForm = document.form1;
+}
+function __doPostBack(eventTarget, eventArgument) {
+    if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+        theForm.__EVENTTARGET.value = eventTarget;
+        theForm.__EVENTARGUMENT.value = eventArgument;
+        theForm.submit();
+    }
+}
+//]]>
+</script>
+<div class="aspNetHidden">
+<input id="__VIEWSTATEGENERATOR" name="__VIEWSTATEGENERATOR" type="hidden" value="4C55420B"/>
+<input id="__EVENTVALIDATION" name="__EVENTVALIDATION" type="hidden" value="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"/>
+</div>
+<div class="filter">
+<div class="sType">
+</div>
+<div class="faculty">
+<select id="ddlFac" name="ddlFac" onchange="javascript:setTimeout('__doPostBack(\'ddlFac\',\'\')', 0)">
+<option selected="selected" value="2">Факультет мониторинга окружающей среды                                                                                                                                                                                                                          </option>
+<option value="3">Факультет повышения квалификации и переподготовки                                                                                                                                                                                                               </option>
+<option value="4">Факультет экологической медицины                                                                                                                                                                                                                                </option>
+</select>
+</div>
+<div class="department">
+<select id="ddlDep" name="ddlDep" onchange="javascript:setTimeout('__doPostBack(\'ddlDep\',\'\')', 0)">
+<option selected="selected" value="2">дневная форма                                                                                       </option>
+<option value="3">заочная форма                                                                                       </option>
+</select>
+</div>
+<div class="course">
+<select id="ddlCourse" name="ddlCourse" onchange="javascript:setTimeout('__doPostBack(\'ddlCourse\',\'\')', 0)">
+<option selected="selected" value="1">1 курс</option>
+<option value="2">2 курс</option>
+<option value="3">3 курс</option>
+<option value="4">4 курс</option>
+<option value="5">5 курс</option>
+</select>
+</div>
+<div class="groupLB">
+<select id="ddlGroup" name="ddlGroup" onchange="javascript:setTimeout('__doPostBack(\'ddlGroup\',\'\')', 0)" style="width:110px;">
+<option selected="selected" value="369">А61ИТ1</option>
+<option value="370">А61ИТ2</option>
+<option value="371">А61ИТ3</option>
+<option value="366">А61МФ1</option>
+<option value="367">А61ЭБ1</option>
+<option value="368">А61ЭБ2</option>
+<option value="365">А61ЯБ1</option>
+</select>
+</div>
+<div class="week">
+<select id="ddlWeek" name="ddlWeek" onchange="javascript:setTimeout('__doPostBack(\'ddlWeek\',\'\')', 0)">
+<option value="18.01.2027 0:00:00">18.01.2027</option>
+<option value="11.01.2027 0:00:00">11.01.2027</option>
+<option value="04.01.2027 0:00:00">04.01.2027</option>
+<option value="28.12.2026 0:00:00">28.12.2026</option>
+<option value="21.12.2026 0:00:00">21.12.2026</option>
+<option value="14.12.2026 0:00:00">14.12.2026</option>
+<option value="07.12.2026 0:00:00">07.12.2026</option>
+<option value="30.11.2026 0:00:00">30.11.2026</option>
+<option value="23.11.2026 0:00:00">23.11.2026</option>
+<option value="16.11.2026 0:00:00">16.11.2026</option>
+<option value="09.11.2026 0:00:00">09.11.2026</option>
+<option class="current-week-option" selected="selected" value="02.11.2026 0:00:00">02.11.2026</option>
+<option value="26.10.2026 0:00:00">26.10.2026</option>
+<option value="19.10.2026 0:00:00">19.10.2026</option>
+<option value="12.10.2026 0:00:00">12.10.2026</option>
+<option value="05.10.2026 0:00:00">05.10.2026</option>
+<option value="28.09.2026 0:00:00">28.09.2026</option>
+<option value="21.09.2026 0:00:00">21.09.2026</option>
+<option value="14.09.2026 0:00:00">14.09.2026</option>
+<option value="07.09.2026 0:00:00">07.09.2026</option>
+<option value="31.08.2026 0:00:00">31.08.2026</option>
+<option value="24.08.2026 0:00:00">24.08.2026</option>
+<option value="17.08.2026 0:00:00">17.08.2026</option>
+<option value="10.08.2026 0:00:00">10.08.2026</option>
+<option value="03.08.2026 0:00:00">03.08.2026</option>
+<option value="27.07.2026 0:00:00">27.07.2026</option>
+<option value="20.07.2026 0:00:00">20.07.2026</option>
+<option value="13.07.2026 0:00:00">13.07.2026</option>
+<option value="06.07.2026 0:00:00">06.07.2026</option>
+<option value="29.06.2026 0:00:00">29.06.2026</option>
+<option value="22.06.2026 0:00:00">22.06.2026</option>
+<option value="15.06.2026 0:00:00">15.06.2026</option>
+<option value="08.06.2026 0:00:00">08.06.2026</option>
+<option value="01.06.2026 0:00:00">01.06.2026</option>
+<option value="25.05.2026 0:00:00">25.05.2026</option>
+<option value="18.05.2026 0:00:00">18.05.2026</option>
+<option value="11.05.2026 0:00:00">11.05.2026</option>
+<option value="04.05.2026 0:00:00">04.05.2026</option>
+<option value="27.04.2026 0:00:00">27.04.2026</option>
+<option value="20.04.2026 0:00:00">20.04.2026</option>
+<option value="13.04.2026 0:00:00">13.04.2026</option>
+<option value="06.04.2026 0:00:00">06.04.2026</option>
+<option value="30.03.2026 0:00:00">30.03.2026</option>
+<option value="23.03.2026 0:00:00">23.03.2026</option>
+<option value="16.03.2026 0:00:00">16.03.2026</option>
+<option value="09.03.2026 0:00:00">09.03.2026</option>
+<option value="02.03.2026 0:00:00">02.03.2026</option>
+<option value="23.02.2026 0:00:00">23.02.2026</option>
+<option value="16.02.2026 0:00:00">16.02.2026</option>
+<option value="09.02.2026 0:00:00">09.02.2026</option>
+<option value="02.02.2026 0:00:00">02.02.2026</option>
+<option value="26.01.2026 0:00:00">26.01.2026</option>
+<option value="19.01.2026 0:00:00">19.01.2026</option>
+<option value="12.01.2026 0:00:00">12.01.2026</option>
+<option value="05.01.2026 0:00:00">05.01.2026</option>
+<option value="29.12.2025 0:00:00">29.12.2025</option>
+<option value="22.12.2025 0:00:00">22.12.2025</option>
+<option value="15.12.2025 0:00:00">15.12.2025</option>
+<option value="08.12.2025 0:00:00">08.12.2025</option>
+<option value="01.12.2025 0:00:00">01.12.2025</option>
+<option value="24.11.2025 0:00:00">24.11.2025</option>
+<option value="17.11.2025 0:00:00">17.11.2025</option>
+<option value="10.11.2025 0:00:00">10.11.2025</option>
+<option value="03.11.2025 0:00:00">03.11.2025</option>
+<option value="27.10.2025 0:00:00">27.10.2025</option>
+<option value="20.10.2025 0:00:00">20.10.2025</option>
+<option value="13.10.2025 0:00:00">13.10.2025</option>
+<option value="06.10.2025 0:00:00">06.10.2025</option>
+<option value="29.09.2025 0:00:00">29.09.2025</option>
+<option value="22.09.2025 0:00:00">22.09.2025</option>
+<option value="15.09.2025 0:00:00">15.09.2025</option>
+<option value="08.09.2025 0:00:00">08.09.2025</option>
+<option value="01.09.2025 0:00:00">01.09.2025</option>
+<option value="14.07.2025 0:00:00">14.07.2025</option>
+<option value="07.07.2025 0:00:00">07.07.2025</option>
+<option value="30.06.2025 0:00:00">30.06.2025</option>
+<option value="23.06.2025 0:00:00">23.06.2025</option>
+<option value="16.06.2025 0:00:00">16.06.2025</option>
+<option value="09.06.2025 0:00:00">09.06.2025</option>
+<option value="02.06.2025 0:00:00">02.06.2025</option>
+<option value="26.05.2025 0:00:00">26.05.2025</option>
+<option value="19.05.2025 0:00:00">19.05.2025</option>
+<option value="12.05.2025 0:00:00">12.05.2025</option>
+<option value="05.05.2025 0:00:00">05.05.2025</option>
+<option value="28.04.2025 0:00:00">28.04.2025</option>
+<option value="21.04.2025 0:00:00">21.04.2025</option>
+<option value="14.04.2025 0:00:00">14.04.2025</option>
+<option value="07.04.2025 0:00:00">07.04.2025</option>
+<option value="31.03.2025 0:00:00">31.03.2025</option>
+<option value="24.03.2025 0:00:00">24.03.2025</option>
+<option value="17.03.2025 0:00:00">17.03.2025</option>
+<option value="10.03.2025 0:00:00">10.03.2025</option>
+<option value="03.03.2025 0:00:00">03.03.2025</option>
+<option value="24.02.2025 0:00:00">24.02.2025</option>
+<option value="17.02.2025 0:00:00">17.02.2025</option>
+<option value="10.02.2025 0:00:00">10.02.2025</option>
+<option value="03.02.2025 0:00:00">03.02.2025</option>
+<option value="27.01.2025 0:00:00">27.01.2025</option>
+<option value="20.01.2025 0:00:00">20.01.2025</option>
+<option value="13.01.2025 0:00:00">13.01.2025</option>
+<option value="06.01.2025 0:00:00">06.01.2025</option>
+<option value="30.12.2024 0:00:00">30.12.2024</option>
+<option value="23.12.2024 0:00:00">23.12.2024</option>
+<option value="16.12.2024 0:00:00">16.12.2024</option>
+<option value="09.12.2024 0:00:00">09.12.2024</option>
+<option value="02.12.2024 0:00:00">02.12.2024</option>
+<option value="25.11.2024 0:00:00">25.11.2024</option>
+<option value="18.11.2024 0:00:00">18.11.2024</option>
+<option value="11.11.2024 0:00:00">11.11.2024</option>
+<option value="04.11.2024 0:00:00">04.11.2024</option>
+<option value="28.10.2024 0:00:00">28.10.2024</option>
+<option value="21.10.2024 0:00:00">21.10.2024</option>
+<option value="14.10.2024 0:00:00">14.10.2024</option>
+<option value="07.10.2024 0:00:00">07.10.2024</option>
+<option value="30.09.2024 0:00:00">30.09.2024</option>
+<option value="23.09.2024 0:00:00">23.09.2024</option>
+<option value="16.09.2024 0:00:00">16.09.2024</option>
+<option value="09.09.2024 0:00:00">09.09.2024</option>
+<option value="02.09.2024 0:00:00">02.09.2024</option>
+</select>
+</div>
+<div class="action_1">
+<input id="ShowTT" name="ShowTT" type="submit" value="Показать"/>
+<div class="show chosen-container chosen-container-single"><a class="chosen-single button">Показать</a></div>
+</div>
+</div>
+<br/>
+<span id="lMessage"></span>
+<table id="TT">
+<caption>
+		Расписание занятий на неделю с 02.11.2026Факультет мониторинга окружающей среды, дневная форма                                                                                        обучения, 1 курс, группа А61ИТ1
+	</caption><tr class="row row-separator">
+<td colspan="6"></td>
+</tr><tr class="row row-header">
+<td class="cell-header cell-date">Дата</td><td class="cell-header cell-time">Время</td><td class="cell-header cell-subgroup">Подгруппа</td><td class="cell-header cell-discipline">Дисциплина</td><td class="cell-header cell-staff">Преподаватель</td><td class="cell-header cell-auditory">Аудитория</td>
+</tr><tr class="row row-separator">
+<td colspan="6"></td>
+</tr><tr class="row row-spanned">
+<td class="cell-date today-date" rowspan="4"><span class="day">Понедельник</span> <span class="date">02.11.2026</span></td><td class="cell-time">08:30-09:50</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лек. Физика<span class="topic"></span></td><td class="cell-staff">доц. Луцевич Александр Александрович</td><td class="cell-auditory">ауд. 103, К2</td>
+</tr><tr class="row">
+<td class="cell-time">10:05-11:25</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лек. Математический анализ<span class="topic"></span></td><td class="cell-staff">пр. Лебедева Галина Ивановна</td><td class="cell-auditory">ауд. 103, К2</td>
+</tr><tr class="row">
+<td class="cell-time">11:35-12:55</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Физика<span class="topic"></span></td><td class="cell-staff">доц. Луцевич Александр Александрович</td><td class="cell-auditory">ауд. 103, К2</td>
+</tr><tr class="row">
+<td class="cell-time">13:25-14:45</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Общая и неорганическая химия<span class="topic"></span></td><td class="cell-staff">пр. Борсток Елена Петровна</td><td class="cell-auditory">ауд. 214, К3</td>
+</tr><tr class="row row-separator">
+<td colspan="6"></td>
+</tr><tr class="row row-spanned">
+<td class="cell-date" rowspan="8"><span class="day">Вторник</span> <span class="date">03.11.2026</span></td><td class="cell-time time-next">08:00-09:20</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лек. Общая и неорганическая химия<span class="topic"></span></td><td class="cell-staff">доктор Шахаб Сиямак Насер</td><td class="cell-auditory">ауд. 21, К1</td>
+</tr><tr class="row">
+<td class="cell-time">09:35-10:55</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1"> Физическая культура<span class="topic"></span></td><td class="cell-staff"> </td><td class="cell-auditory">ауд. , </td>
+</tr><tr class="row">
+<td class="cell-time">11:35-12:55</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лек. Современная политэкономия<span class="topic"></span></td><td class="cell-staff">пр. Бутрим Татьяна Вячеславовна</td><td class="cell-auditory">ауд. 103, К2</td>
+</tr><tr class="row">
+<td class="cell-time">13:25-14:45</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Иностранный язык<span class="topic"></span></td><td class="cell-staff">пр. Тюрдеева Анастасия Игоревна</td><td class="cell-auditory">ауд. 410, К2</td>
+</tr><tr class="row">
+<td class="cell-time">13:25-14:45</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Иностранный язык<span class="topic"></span></td><td class="cell-staff">пр. Шальманова Екатерина Ивановна</td><td class="cell-auditory">ауд. 412, К2</td>
+</tr><tr class="row">
+<td class="cell-time">13:25-14:45</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Иностранный язык<span class="topic"></span></td><td class="cell-staff">ст.пр. Беляева Татьяна-Светлана Валериевна</td><td class="cell-auditory">ауд. 205, К2</td>
+</tr><tr class="row">
+<td class="cell-time">13:25-14:45</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Иностранный язык<span class="topic"></span></td><td class="cell-staff">пр. Орлова Мария Владимировна</td><td class="cell-auditory">ауд. 301, К2</td>
+</tr><tr class="row">
+<td class="cell-time">14:55-16:15</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Современная политэкономия<span class="topic"></span></td><td class="cell-staff">пр. Бутрим Татьяна Вячеславовна</td><td class="cell-auditory">ауд. 303, К2</td>
+</tr><tr class="row row-separator">
+<td colspan="6"></td>
+</tr><tr class="row row-spanned">
+<td class="cell-date" rowspan="6"><span class="day">Среда</span> <span class="date">04.11.2026</span></td><td class="cell-time time-next">08:00-09:20</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1"> Физическая культура<span class="topic"></span></td><td class="cell-staff"> </td><td class="cell-auditory">ауд. , </td>
+</tr><tr class="row">
+<td class="cell-time">09:35-10:55</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лек. Линейная алгебра и аналитическая геометрия<span class="topic"></span></td><td class="cell-staff">ст.пр. Борботко Елена Петровна</td><td class="cell-auditory">ауд. 413, К1</td>
+</tr><tr class="row">
+<td class="cell-time">11:35-12:55</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Линейная алгебра и аналитическая геометрия<span class="topic"></span></td><td class="cell-staff">ст.пр. Федоренчик Елена Викторовна</td><td class="cell-auditory">ауд. 303, К2</td>
+</tr><tr class="row">
+<td class="cell-time">13:25-14:45</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Математический анализ<span class="topic"></span></td><td class="cell-staff">пр. Ушакова Оксана Александровна</td><td class="cell-auditory">ауд. 213, К2</td>
+</tr><tr class="row">
+<td class="cell-time">14:55-16:15</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Биология<span class="topic"></span></td><td class="cell-staff">ст.пр. Хандогий Ирина Михайловна</td><td class="cell-auditory">ауд. 407, К2</td>
+</tr><tr class="row">
+<td class="cell-time">16:35-17:55</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">информационный час <span class="topic"></span></td><td class="cell-staff"> </td><td class="cell-auditory">ауд. 216, К3</td>
+</tr><tr class="row row-separator">
+<td colspan="6"></td>
+</tr><tr class="row row-spanned">
+<td class="cell-date" rowspan="6"><span class="day">Четверг</span> <span class="date">05.11.2026</span></td><td class="cell-time time-next">08:30-09:50</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лаб. Биология<span class="topic">1п/гр</span></td><td class="cell-staff">ст.пр. Хандогий Ирина Михайловна</td><td class="cell-auditory">ауд. 406, К2</td>
+</tr><tr class="row">
+<td class="cell-time time-next">08:30-09:50</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лаб. Основы алгоритмизации и программирования<span class="topic">2п/гр</span></td><td class="cell-staff">пр. Борисова Ирина Михайловна</td><td class="cell-auditory">ауд. 309, К2</td>
+</tr><tr class="row">
+<td class="cell-time">10:05-11:25</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лаб. Биология<span class="topic">1п/гр</span></td><td class="cell-staff">ст.пр. Хандогий Ирина Михайловна</td><td class="cell-auditory">ауд. 406, К2</td>
+</tr><tr class="row">
+<td class="cell-time">10:05-11:25</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лаб. Основы алгоритмизации и программирования<span class="topic">2п/гр</span></td><td class="cell-staff">пр. Борисова Ирина Михайловна</td><td class="cell-auditory">ауд. 309, К2</td>
+</tr><tr class="row">
+<td class="cell-time">11:35-12:55</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лек. Биология<span class="topic"></span></td><td class="cell-staff">ст.пр. Хандогий Ирина Михайловна</td><td class="cell-auditory">ауд. 103, К2</td>
+</tr><tr class="row">
+<td class="cell-time">13:25-14:45</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лек. Основы алгоритмизации и программирования<span class="topic"></span></td><td class="cell-staff">доц. Смирнова Татьяна Васильевна</td><td class="cell-auditory">ауд. 103, К2</td>
+</tr><tr class="row row-separator">
+<td colspan="6"></td>
+</tr><tr class="row row-spanned">
+<td class="cell-date" rowspan="8"><span class="day">Пятница</span> <span class="date">06.11.2026</span></td><td class="cell-time time-next">08:30-09:50</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лаб. Основы алгоритмизации и программирования<span class="topic">1п/гр</span></td><td class="cell-staff">ст.пр. Кот Елена Владимировна</td><td class="cell-auditory">ауд. 311, К2</td>
+</tr><tr class="row">
+<td class="cell-time">10:05-11:25</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лаб. Основы алгоритмизации и программирования<span class="topic">1п/гр</span></td><td class="cell-staff">ст.пр. Кот Елена Владимировна</td><td class="cell-auditory">ауд. 311, К2</td>
+</tr><tr class="row">
+<td class="cell-time">11:35-12:55</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лек. Коррупция и ее общественная опасность<span class="topic"></span></td><td class="cell-staff">ст.пр. Лучина Виктория Николаевна</td><td class="cell-auditory">ауд. 407, К2</td>
+</tr><tr class="row">
+<td class="cell-time">13:25-14:45</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">лек. История белорусской государственности<span class="topic"></span></td><td class="cell-staff">ст. преподаватель Гаврилов Вадим Иванович</td><td class="cell-auditory">ауд. 407, К2</td>
+</tr><tr class="row">
+<td class="cell-time">14:55-16:15</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Иностранный язык<span class="topic"></span></td><td class="cell-staff">пр. Тюрдеева Анастасия Игоревна</td><td class="cell-auditory">ауд. 401, К2</td>
+</tr><tr class="row">
+<td class="cell-time">14:55-16:15</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Иностранный язык<span class="topic"></span></td><td class="cell-staff">пр. Шальманова Екатерина Ивановна</td><td class="cell-auditory">ауд. 410, К2</td>
+</tr><tr class="row">
+<td class="cell-time">14:55-16:15</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Иностранный язык<span class="topic"></span></td><td class="cell-staff">ст.пр. Беляева Татьяна-Светлана Валериевна</td><td class="cell-auditory">ауд. 205, К2</td>
+</tr><tr class="row">
+<td class="cell-time">14:55-16:15</td><td class="cell-subgroup"></td><td class="cell-discipline" colspan="1">практ. зан. Иностранный язык<span class="topic"></span></td><td class="cell-staff">пр. Орлова Мария Владимировна</td><td class="cell-auditory">ауд. 301, К2</td>
+</tr><tr class="row row-separator">
+<td colspan="6"></td>
+</tr><tr class="row row-empty">
+<td class="cell-date"><span class="day">Суббота</span> <span class="date">07.11.2026</span></td><td class="cell-empty" colspan="5"></td>
+</tr><tr class="row row-separator">
+<td colspan="6"></td>
+</tr><tr class="row row-empty">
+<td class="cell-date"><span class="day">Воскресенье</span> <span class="date">08.11.2026</span></td><td class="cell-empty" colspan="5"></td>
+</tr><tr class="row row-separator">
+<td colspan="6"></td>
+</tr>
+</table>
+<input id="iframeheight" name="iframeheight" type="hidden" value="0"/>
+<p class="help-msg">
+</p>
+</form>
+<table id="Table1">
+</table>
+</body>
+</html>
