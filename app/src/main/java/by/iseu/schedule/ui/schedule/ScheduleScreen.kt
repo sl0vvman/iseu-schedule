@@ -1,7 +1,8 @@
 package by.iseu.schedule.ui.schedule
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,8 +31,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -48,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,15 +73,7 @@ private val dayMonth: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM")
 private val timeOnly: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 private val fullTime: DateTimeFormatter =
     DateTimeFormatter.ofPattern("dd.MM, HH:mm").withZone(ZoneId.systemDefault())
-private val dayNames = listOf(
-    "Понедельник",
-    "Вторник",
-    "Среда",
-    "Четверг",
-    "Пятница",
-    "Суббота",
-    "Воскресенье",
-)
+private val shortDayNames = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,13 +89,17 @@ fun ScheduleScreen(
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    BackHandler(enabled = state.isTeacherPreview) {
+        viewModel.closeTeacherPreview()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text("ISEU", fontWeight = FontWeight.SemiBold)
-                        state.selection?.targetLabel?.let { label ->
+                        state.activeSelection?.targetLabel?.let { label ->
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.bodySmall,
@@ -134,6 +134,15 @@ fun ScheduleScreen(
                 onCurrent = viewModel::currentWeek,
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            if (state.isTeacherPreview) {
+                TeacherPreviewBanner(
+                    label = state.activeSelection?.targetLabel.orEmpty(),
+                    onBack = viewModel::closeTeacherPreview,
+                )
+            }
+            state.notice?.let { notice ->
+                NoticeBanner(message = notice, onDismiss = viewModel::clearNotice)
+            }
             WeekContent(state = state, viewModel = viewModel)
         }
     }
@@ -191,138 +200,151 @@ private fun WeekContent(
     viewModel: ScheduleViewModel,
 ) {
     val today = LocalDate.now()
-    val lessonsByDate = remember(state.lessons) { state.lessons.groupBy { it.date } }
-    val days = remember(state.weekMonday, state.lessons, today) {
-        if (state.lessons.isEmpty()) {
-            emptyList()
-        } else {
-            (0..6)
-                .map { state.weekMonday.plusDays(it.toLong()) }
-                .filter { lessonsByDate[it].orEmpty().isNotEmpty() || it == today }
-        }
+    val content = state.content()
+    val dayLessons = remember(state.lessons, state.selectedDay) {
+        state.lessons.filter { it.date == state.selectedDay }
     }
     val listState = rememberLazyListState()
-    val headerCount = (if (state.error != null) 1 else 0) + (if (state.isFromCache) 1 else 0)
 
-    LaunchedEffect(state.weekMonday, state.lessons, state.isFromCache, state.error) {
-        val todayIndex = days.indexOf(today)
-        if (todayIndex >= 0 && state.weekMonday == WeekSelector.mondayOf(today)) {
-            listState.scrollToItem(headerCount + todayIndex)
-        }
+    LaunchedEffect(state.selectedDay, state.weekMonday) {
+        listState.scrollToItem(0)
     }
 
-    PullToRefreshBox(
-        isRefreshing = state.refreshing,
-        onRefresh = viewModel::refresh,
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        when (state.content()) {
-            ScheduleContent.LOADING -> Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
-
-            ScheduleContent.ERROR -> ErrorState(
-                message = state.error.orEmpty(),
-                onRetry = viewModel::retry,
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (content == ScheduleContent.LESSONS) {
+            DayTabs(
+                weekMonday = state.weekMonday,
+                selectedDay = state.selectedDay,
+                today = today,
+                onSelect = viewModel::selectDay,
             )
-
-            ScheduleContent.EMPTY -> EmptyWeek(state.siteMessage)
-
-            ScheduleContent.LESSONS -> LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                if (state.error != null) {
-                    item(key = "error") {
-                        ErrorBanner(state.error.orEmpty(), viewModel::retry)
-                    }
-                }
-                if (state.isFromCache) {
-                    item(key = "cache") {
-                        CacheBanner(state.fetchedAt, viewModel::refresh)
-                    }
-                }
-                items(days, key = { it.toString() }) { date ->
-                    DaySection(
-                        date = date,
-                        lessons = lessonsByDate[date].orEmpty(),
-                        isToday = date == today,
-                        mode = state.selection?.mode ?: Mode.GROUP,
-                    )
-                }
-            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
-    }
-}
 
-@Composable
-private fun DaySection(
-    date: LocalDate,
-    lessons: List<Lesson>,
-    isToday: Boolean,
-    mode: Mode,
-) {
-    val headerColor = if (isToday) {
-        MaterialTheme.colorScheme.onBackground
-    } else {
-        Color.Transparent
-    }
-    val headerTextColor = if (isToday) {
-        MaterialTheme.colorScheme.background
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(color = headerColor, shape = RoundedCornerShape(8.dp))
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        PullToRefreshBox(
+            isRefreshing = state.refreshing,
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.weight(1f),
         ) {
-            Text(
-                text = dayNames[date.dayOfWeek.value - 1],
-                color = headerTextColor,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = date.format(dayMonth),
-                color = headerTextColor,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
+            when (content) {
+                ScheduleContent.LOADING -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
 
-        if (lessons.isEmpty()) {
-            Text(
-                text = "Нет занятий",
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        } else {
-            lessons.forEachIndexed { index, lesson ->
-                LessonCard(lesson = lesson, mode = mode)
-                if (index != lessons.lastIndex) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 10.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                    )
+                ScheduleContent.ERROR -> ErrorState(
+                    message = state.error.orEmpty(),
+                    onRetry = viewModel::retry,
+                )
+
+                ScheduleContent.EMPTY -> EmptyWeek(state.siteMessage)
+
+                ScheduleContent.LESSONS -> LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (state.error != null) {
+                        item(key = "error") {
+                            ErrorBanner(state.error.orEmpty(), viewModel::retry)
+                        }
+                    }
+                    if (state.isFromCache) {
+                        item(key = "cache") {
+                            CacheBanner(state.fetchedAt, viewModel::refresh)
+                        }
+                    }
+                    if (dayLessons.isEmpty()) {
+                        item(key = "empty-day") {
+                            EmptyDay()
+                        }
+                    } else {
+                        itemsIndexed(dayLessons, key = { index, _ -> index }) { index, lesson ->
+                            LessonCard(
+                                lesson = lesson,
+                                mode = state.activeSelection?.mode ?: Mode.GROUP,
+                                onStaffClick = viewModel::openTeacher,
+                            )
+                            if (index != dayLessons.lastIndex) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 10.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(4.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DayTabs(
+    weekMonday: LocalDate,
+    selectedDay: LocalDate,
+    today: LocalDate,
+    onSelect: (LocalDate) -> Unit,
+) {
+    val days = remember(weekMonday) {
+        (0..6).map { weekMonday.plusDays(it.toLong()) }
+    }
+    val selectedIndex = days.indexOf(selectedDay).takeIf { it >= 0 } ?: 0
+
+    PrimaryTabRow(
+        selectedTabIndex = selectedIndex,
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = Color.Transparent,
+        divider = {},
+    ) {
+        days.forEach { date ->
+            Tab(
+                selected = date == selectedDay,
+                onClick = { onSelect(date) },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = shortDayNames[date.dayOfWeek.value - 1],
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (date == today) FontWeight.Bold else FontWeight.Medium,
+                        )
+                        Text(
+                            text = date.format(dayMonth),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                },
+            )
+        }
     }
 }
 
 @Composable
-private fun LessonCard(lesson: Lesson, mode: Mode) {
+private fun EmptyDay() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 48.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "Нет занятий",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+@Composable
+private fun LessonCard(
+    lesson: Lesson,
+    mode: Mode,
+    onStaffClick: (String) -> Unit,
+) {
     val outline = MaterialTheme.colorScheme.outline
 
     Row(
@@ -375,13 +397,39 @@ private fun LessonCard(lesson: Lesson, mode: Mode) {
 
             TypeBadge(lesson.type)
 
-            val secondary = if (mode == Mode.GROUP) lesson.staff else lesson.contingent
-            secondary?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            if (mode == Mode.GROUP) {
+                lesson.staff?.let { staff ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                onClickLabel = "Открыть расписание преподавателя",
+                            ) { onStaffClick(staff) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = staff,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textDecoration = TextDecoration.Underline,
+                        )
+                        Icon(
+                            Icons.Default.KeyboardArrowRight,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            } else {
+                lesson.contingent?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             lesson.topic?.let {
                 Text(
@@ -438,6 +486,64 @@ private fun SubgroupBadge(subgroup: Int) {
                 MaterialTheme.colorScheme.onSurface
             },
         )
+    }
+}
+
+@Composable
+private fun TeacherPreviewBanner(label: String, onBack: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, top = 6.dp, bottom = 6.dp, end = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Расписание преподавателя",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            TextButton(onClick = onBack) {
+                Text("К группе")
+            }
+        }
+    }
+}
+
+@Composable
+private fun NoticeBanner(message: String, onDismiss: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = message,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            TextButton(onClick = onDismiss) {
+                Text("Понятно")
+            }
+        }
     }
 }
 

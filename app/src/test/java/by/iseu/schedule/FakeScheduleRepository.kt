@@ -29,6 +29,7 @@ class FakeScheduleRepository : ScheduleRepository {
     var loadWeekCalls = 0
     var clearSelectionCalls = 0
     var clearCatalogCacheCalls = 0
+    val loadedSelections = mutableListOf<ScheduleSelection>()
 
     var weeks: List<Option> = listOf(
         Option("02.11.2026 0:00:00", "02.11.2026"),
@@ -93,6 +94,7 @@ class FakeScheduleRepository : ScheduleRepository {
         force: Boolean,
     ): SchedulePage {
         loadWeekCalls++
+        loadedSelections += selection
         loadWeekError?.let { throw it }
         return weekPage ?: SchedulePage(
             weeks = weeks,

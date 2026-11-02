@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -137,6 +138,106 @@ class ScheduleViewModelTest {
         assertNotNull(vm.state.value.error)
         assertEquals(1, vm.state.value.lessons.size)
         assertTrue(vm.state.value.isFromCache)
+    }
+
+    @Test
+    fun `opens on today when today is in the current week`() = runTest(dispatcher) {
+        val fake = FakeScheduleRepository().apply {
+            selection.value = groupSelection()
+        }
+        val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 4) }
+        advanceUntilIdle()
+
+        assertEquals(LocalDate.of(2026, 11, 4), vm.state.value.selectedDay)
+    }
+
+    @Test
+    fun `selected day follows week navigation and returns to today`() = runTest(dispatcher) {
+        val fake = FakeScheduleRepository().apply {
+            selection.value = groupSelection()
+        }
+        val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 4) }
+        advanceUntilIdle()
+
+        vm.selectDay(LocalDate.of(2026, 11, 5))
+        assertEquals(LocalDate.of(2026, 11, 5), vm.state.value.selectedDay)
+
+        vm.nextWeek()
+        advanceUntilIdle()
+        assertEquals(LocalDate.of(2026, 11, 9), vm.state.value.weekMonday)
+        assertEquals(LocalDate.of(2026, 11, 9), vm.state.value.selectedDay)
+
+        vm.currentWeek()
+        advanceUntilIdle()
+        assertEquals(LocalDate.of(2026, 11, 2), vm.state.value.weekMonday)
+        assertEquals(LocalDate.of(2026, 11, 4), vm.state.value.selectedDay)
+    }
+
+    @Test
+    fun `opens a teacher schedule and returns to the saved group`() = runTest(dispatcher) {
+        val fake = FakeScheduleRepository().apply {
+            selection.value = groupSelection()
+            teachers = listOf(Option("-446", "Авласович Алексей Михайлович (доц.)"))
+        }
+        val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
+        advanceUntilIdle()
+
+        vm.openTeacher("доц. Авласович Алексей Михайлович")
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.isTeacherPreview)
+        assertEquals(Mode.TEACHER, vm.state.value.activeSelection?.mode)
+        assertEquals(
+            "Авласович Алексей Михайлович (доц.)",
+            vm.state.value.activeSelection?.targetLabel,
+        )
+        assertEquals(Mode.GROUP, fake.selection.value?.mode)
+        assertEquals(Mode.TEACHER, fake.loadedSelections.last().mode)
+
+        vm.closeTeacherPreview()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.isTeacherPreview)
+        assertEquals(Mode.GROUP, vm.state.value.activeSelection?.mode)
+        assertEquals(Mode.GROUP, fake.loadedSelections.last().mode)
+        assertEquals(Mode.GROUP, fake.selection.value?.mode)
+    }
+
+    @Test
+    fun `selection re-emission does not close a teacher preview`() = runTest(dispatcher) {
+        val fake = FakeScheduleRepository().apply {
+            selection.value = groupSelection()
+            teachers = listOf(Option("-446", "Авласович Алексей Михайлович (доц.)"))
+        }
+        val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
+        advanceUntilIdle()
+        vm.openTeacher("доц. Авласович Алексей Михайлович")
+        advanceUntilIdle()
+        assertTrue(vm.state.value.isTeacherPreview)
+
+        val saved = fake.groupSelection()
+        fake.selection.value = saved.copy(
+            group = saved.group!!.copy(label = "${saved.group.label} "),
+        )
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.isTeacherPreview)
+    }
+
+    @Test
+    fun `unknown teacher in a group lesson produces a notice, not a preview`() = runTest(dispatcher) {
+        val fake = FakeScheduleRepository().apply {
+            selection.value = groupSelection()
+        }
+        val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
+        advanceUntilIdle()
+
+        vm.openTeacher("пр. Неизвестный Иван Иванович")
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.isTeacherPreview)
+        assertNotNull(vm.state.value.notice)
+        assertEquals(Mode.GROUP, vm.state.value.activeSelection?.mode)
     }
 
     private fun sampleLesson() = Lesson(
