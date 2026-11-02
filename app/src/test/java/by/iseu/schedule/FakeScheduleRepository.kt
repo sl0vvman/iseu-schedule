@@ -27,6 +27,8 @@ class FakeScheduleRepository : ScheduleRepository {
     var loadGroupsError: Throwable? = null
     var loadWeekError: Throwable? = null
     var loadWeekCalls = 0
+    var clearSelectionCalls = 0
+    var clearCatalogCacheCalls = 0
 
     var weeks: List<Option> = listOf(
         Option("02.11.2026 0:00:00", "02.11.2026"),
@@ -44,6 +46,12 @@ class FakeScheduleRepository : ScheduleRepository {
     override suspend fun saveSelection(selection: ScheduleSelection) {
         saved = selection
         this.selection.value = selection
+    }
+
+    override suspend fun clearSelection() {
+        clearSelectionCalls++
+        saved = null
+        selection.value = null
     }
 
     override suspend fun setTheme(mode: ThemeMode) {
@@ -101,6 +109,10 @@ class FakeScheduleRepository : ScheduleRepository {
     }
 
     override suspend fun clearCache() = Unit
+
+    override suspend fun clearCatalogCache() {
+        clearCatalogCacheCalls++
+    }
 
     fun groupSelection(): ScheduleSelection = ScheduleSelection(
         mode = Mode.GROUP,

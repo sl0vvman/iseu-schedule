@@ -216,22 +216,22 @@ private fun WeekContent(
         onRefresh = viewModel::refresh,
         modifier = Modifier.fillMaxSize(),
     ) {
-        when {
-            state.loading && state.lessons.isEmpty() -> Box(
+        when (state.content()) {
+            ScheduleContent.LOADING -> Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator()
             }
 
-            state.error != null && state.lessons.isEmpty() -> ErrorState(
+            ScheduleContent.ERROR -> ErrorState(
                 message = state.error.orEmpty(),
                 onRetry = viewModel::retry,
             )
 
-            state.lessons.isEmpty() -> EmptyWeek(state.siteMessage)
+            ScheduleContent.EMPTY -> EmptyWeek(state.siteMessage)
 
-            else -> LazyColumn(
+            ScheduleContent.LESSONS -> LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),

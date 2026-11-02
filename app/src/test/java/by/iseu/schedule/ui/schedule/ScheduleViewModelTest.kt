@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -85,6 +86,34 @@ class ScheduleViewModelTest {
         assertEquals(Mode.TEACHER, vm.state.value.selection?.mode)
         assertEquals("Авдеева Екатерина Владимировна (пр.)", vm.state.value.selection?.targetLabel)
         assertTrue(fake.loadWeekCalls > loadsBefore)
+    }
+
+    @Test
+    fun `cached empty week is an empty state, not an error`() {
+        val cachedEmpty = ScheduleUiState(
+            lessons = emptyList(),
+            error = "Нет сети",
+            isFromCache = true,
+        )
+        val noCache = ScheduleUiState(lessons = emptyList(), error = "Нет сети")
+
+        assertEquals(ScheduleContent.EMPTY, cachedEmpty.content())
+        assertEquals(ScheduleContent.ERROR, noCache.content())
+    }
+
+    @Test
+    fun `clears the saved target when the catalog no longer has it`() = runTest(dispatcher) {
+        val fake = FakeScheduleRepository().apply {
+            selection.value = groupSelection()
+            loadWeekError = IseuException.CatalogStale()
+        }
+        val vm = ScheduleViewModel(fake) { LocalDate.of(2026, 11, 2) }
+        advanceUntilIdle()
+
+        assertNull(fake.selection.value)
+        assertEquals(1, fake.clearSelectionCalls)
+        assertEquals(1, fake.clearCatalogCacheCalls)
+        assertNotNull(vm.state.value.error)
     }
 
     @Test

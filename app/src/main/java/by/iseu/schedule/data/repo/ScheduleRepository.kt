@@ -36,6 +36,7 @@ interface ScheduleRepository {
     fun selectionFlow(): Flow<ScheduleSelection?>
     fun themeFlow(): Flow<ThemeMode>
     suspend fun saveSelection(selection: ScheduleSelection)
+    suspend fun clearSelection()
     suspend fun setTheme(mode: ThemeMode)
     suspend fun loadFaculties(force: Boolean = false): List<Option>
     suspend fun loadForms(faculty: Option, force: Boolean = false): List<Option>
@@ -50,6 +51,7 @@ interface ScheduleRepository {
         force: Boolean = false,
     ): SchedulePage
     suspend fun clearCache()
+    suspend fun clearCatalogCache()
 }
 
 class DefaultScheduleRepository(
@@ -73,6 +75,10 @@ class DefaultScheduleRepository(
 
     override suspend fun saveSelection(selection: ScheduleSelection) {
         selectionStore.saveSelection(selection)
+    }
+
+    override suspend fun clearSelection() {
+        selectionStore.clearSelection()
     }
 
     override suspend fun setTheme(mode: ThemeMode) {
@@ -158,6 +164,10 @@ class DefaultScheduleRepository(
         catalogDao.clear()
     }
 
+    override suspend fun clearCatalogCache() {
+        catalogDao.clear()
+    }
+
     private suspend fun cachedOptions(
         key: String,
         force: Boolean,
@@ -209,8 +219,17 @@ class DefaultScheduleRepository(
         val group = selection.group ?: throw IseuException.CatalogStale()
 
         val session = AspNetSession(client, GROUP_URL, cookieJar)
+        if (session.options("ddlFac").usable().none { it.value == faculty.value }) {
+            throw IseuException.CatalogStale()
+        }
         session.postback("ddlFac", mapOf("ddlFac" to faculty.value))
+        if (session.options("ddlDep").usable().none { it.value == form.value }) {
+            throw IseuException.CatalogStale()
+        }
         session.postback("ddlDep", mapOf("ddlDep" to form.value))
+        if (session.options("ddlCourse").usable().none { it.value == course.value }) {
+            throw IseuException.CatalogStale()
+        }
         session.postback("ddlCourse", mapOf("ddlCourse" to course.value))
 
         val groups = session.options("ddlGroup").usable()
@@ -235,6 +254,9 @@ class DefaultScheduleRepository(
         val teacher = selection.teacher ?: throw IseuException.CatalogStale()
 
         val session = AspNetSession(client, TEACHER_URL, cookieJar)
+        if (session.options("DropDownList1").usable().none { it.value == teacher.value }) {
+            throw IseuException.CatalogStale()
+        }
         session.postback("DropDownList1", mapOf("DropDownList1" to teacher.value))
 
         val weeks = session.options("ddlWeek").sortedWeeks()

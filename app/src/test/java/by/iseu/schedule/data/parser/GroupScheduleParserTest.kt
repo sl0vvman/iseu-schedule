@@ -63,6 +63,13 @@ class GroupScheduleParserTest {
     }
 
     @Test
+    fun `strips plain subgroup marker from real markup`() {
+        val lesson = ScheduleParser.parseGroupTable(html).first { it.discipline.contains("Биология") && it.subgroup == 1 }
+        assertEquals("Биология", lesson.discipline)
+        assertEquals(1, lesson.subgroup)
+    }
+
+    @Test
     fun `parses rows without class attribute`() {
         val synthetic = """
             <table id="TT">

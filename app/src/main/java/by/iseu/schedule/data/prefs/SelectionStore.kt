@@ -59,6 +59,12 @@ class SelectionStore(private val context: Context) {
         }
     }
 
+    suspend fun clearSelection() {
+        context.dataStore.edit { prefs ->
+            Keys.selectionKeys.forEach { prefs.remove(it) }
+        }
+    }
+
     suspend fun setTheme(mode: ThemeMode) {
         context.dataStore.edit { prefs -> prefs[Keys.theme] = mode.name }
     }

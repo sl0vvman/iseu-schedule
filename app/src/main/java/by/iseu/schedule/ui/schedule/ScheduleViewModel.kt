@@ -33,6 +33,15 @@ data class ScheduleUiState(
     val fetchedAt: Instant? = null,
 )
 
+internal enum class ScheduleContent { LOADING, ERROR, EMPTY, LESSONS }
+
+internal fun ScheduleUiState.content(): ScheduleContent = when {
+    loading && lessons.isEmpty() -> ScheduleContent.LOADING
+    error != null && !isFromCache && lessons.isEmpty() -> ScheduleContent.ERROR
+    lessons.isEmpty() -> ScheduleContent.EMPTY
+    else -> ScheduleContent.LESSONS
+}
+
 class ScheduleViewModel(
     private val repository: ScheduleRepository,
     private val today: () -> LocalDate = { LocalDate.now() },
@@ -170,9 +179,13 @@ class ScheduleViewModel(
                     )
                 }
             } catch (error: Throwable) {
+                if (error is IseuException.CatalogStale) {
+                    runCatching { repository.clearSelection() }
+                    runCatching { repository.clearCatalogCache() }
+                }
                 val message = when (error) {
                     is IseuException.CatalogStale ->
-                        "Сохранённая группа больше не доступна. Выберите заново."
+                        "Сохранённая группа или преподаватель больше не доступны. Выберите заново."
                     is IseuException ->
                         error.message.orEmpty().ifEmpty { "Не удалось загрузить расписание" }
                     else -> "Не удалось загрузить расписание"

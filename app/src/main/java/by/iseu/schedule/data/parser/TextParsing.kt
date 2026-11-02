@@ -12,6 +12,10 @@ object TextParsing {
     private val TIME = Regex("""(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})""")
     private val SUBGROUP_BRACKET = Regex("""\[\s*(\d)\s*п\s*/\s*гр\s*\]""", RegexOption.IGNORE_CASE)
     private val SUBGROUP_PLAIN = Regex("""(?:^|\D)(\d)\s*п\s*/\s*гр""", RegexOption.IGNORE_CASE)
+    private val SUBGROUP_MARKERS = Regex(
+        """\[\s*\d\s*п\s*/\s*гр\s*\]|\d\s*п\s*/\s*гр""",
+        RegexOption.IGNORE_CASE,
+    )
     private val WHITESPACE = Regex("""\s+""")
 
     private val TYPE_PREFIXES = listOf(
@@ -48,8 +52,7 @@ object TextParsing {
     }
 
     fun parseDiscipline(raw: String): Pair<String, LessonType> {
-        var text = raw.replace('\u00A0', ' ').replace(WHITESPACE, " ").trim()
-        text = text.replace(SUBGROUP_BRACKET, "").trim()
+        var text = stripSubgroupMarkers(raw)
         var type = LessonType.OTHER
         for ((prefix, lessonType) in TYPE_PREFIXES) {
             if (text.startsWith(prefix, ignoreCase = true)) {
@@ -61,6 +64,12 @@ object TextParsing {
         text = text.trim('"', '«', '»', ' ', ',')
         return text to type
     }
+
+    fun stripSubgroupMarkers(raw: String): String =
+        raw.replace('\u00A0', ' ')
+            .replace(SUBGROUP_MARKERS, "")
+            .replace(WHITESPACE, " ")
+            .trim()
 
     fun parseSubgroup(raw: String?): Int? {
         if (raw == null) return null

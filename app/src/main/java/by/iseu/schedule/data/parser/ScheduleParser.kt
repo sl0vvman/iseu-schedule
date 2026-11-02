@@ -5,7 +5,6 @@ import org.jsoup.Jsoup
 import java.time.LocalDate
 
 object ScheduleParser {
-    private val SUBGROUP_MARKER = Regex("""\[\s*\d\s*п\s*/\s*гр\s*\]""", RegexOption.IGNORE_CASE)
 
     fun parseGroupTable(html: String): List<Lesson> {
         val table = Jsoup.parse(html).selectFirst("table#TT") ?: return emptyList()
@@ -85,7 +84,7 @@ object ScheduleParser {
             val rawTopic = cells[offset + 3].text()
             val subgroup = TextParsing.parseSubgroup(rawTopic)
                 ?: TextParsing.parseSubgroup(rawDiscipline)
-            val topic = TextParsing.cleanOrNull(rawTopic.replace(SUBGROUP_MARKER, ""))
+            val topic = TextParsing.cleanOrNull(TextParsing.stripSubgroupMarkers(rawTopic))
 
             lessons += Lesson(
                 dayOfWeek = dayOfWeek,
